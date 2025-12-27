@@ -1,7 +1,7 @@
 """
 Text Extraction API for RAG.
 
-Главный модуль FastAPI приложения
+Main FastAPI application module
 """
 
 import asyncio
@@ -29,139 +29,139 @@ from app.utils import (
     validate_file_type,
 )
 
-# Настройка логирования
+# Setup logging
 setup_logging()
 logger = logging.getLogger(__name__)
 
-# Константы для FastAPI аргументов
+# Constants for FastAPI arguments
 FILE_UPLOAD = File(...)
 
-# Инициализация экстрактора текста
+# Initialize text extractor
 text_extractor = TextExtractor()
 
 
-# Pydantic модели
+# Pydantic models
 class Base64FileRequest(BaseModel):
-    """Модель для запроса обработки base64-файла."""
+    """Model for base64 file processing request."""
 
     encoded_base64_file: str = Field(
         "0J/RgNC40LLQtdGCINC80LjRgCEg0K3RgtC+INGC0LXRgdGCIGJhc2U2NArQntGH0LXQvdGMINC00LvQuNC90L3Ri9C5LCDRgSDQv9C10YDQtdC90L7RgdC+0Lwg0YHRgtGA0L7Qui4=",
-        description="Файл в кодировке base64",
+        description="Base64 encoded file",
     )
-    filename: str = Field("test.txt", description="Имя файла с расширением")
+    filename: str = Field("test.txt", description="Filename with extension")
 
 
 class ExtractionOptions(BaseModel):
-    """Настройки извлечения текста для веб-страниц (новое в v1.10.2)."""
+    """Text extraction settings for web pages (new in v1.10.2)."""
 
-    # JavaScript и рендеринг
+    # JavaScript and rendering
     enable_javascript: Optional[bool] = Field(
-        True, description="Включить/выключить JavaScript рендеринг"
+        True, description="Enable/disable JavaScript rendering"
     )
     js_render_timeout: Optional[int] = Field(
-        10, description="Таймаут JS-рендеринга в секундах"
+        10, description="JS rendering timeout in seconds"
     )
     web_page_delay: Optional[int] = Field(
-        3, description="Задержка после загрузки JS в секундах"
+        3, description="Delay after JS load in seconds"
     )
 
     # Lazy Loading
     enable_lazy_loading_wait: Optional[bool] = Field(
-        True, description="Включить ожидание lazy loading"
+        True, description="Enable lazy loading wait"
     )
     max_scroll_attempts: Optional[int] = Field(
-        3, description="Максимальное количество попыток скролла"
+        3, description="Maximum scroll attempts"
     )
 
-    # Обработка изображений
+    # Image processing
     process_images: Optional[bool] = Field(
-        True, description="Обрабатывать ли изображения через OCR"
+        True, description="Process images via OCR"
     )
     enable_base64_images: Optional[bool] = Field(
-        True, description="Обрабатывать ли base64 изображения"
+        True, description="Process base64 images"
     )
     min_image_size_for_ocr: Optional[int] = Field(
-        22500, description="Минимальный размер изображения для OCR (пиксели)"
+        22500, description="Minimum image size for OCR (pixels)"
     )
     max_images_per_page: Optional[int] = Field(
-        20, description="Максимальное количество изображений на странице"
+        20, description="Maximum images per page"
     )
 
-    # Таймауты
+    # Timeouts
     web_page_timeout: Optional[int] = Field(
-        30, description="Таймаут загрузки страницы в секундах"
+        30, description="Page load timeout in seconds"
     )
     image_download_timeout: Optional[int] = Field(
-        15, description="Таймаут загрузки изображений в секундах"
+        15, description="Image download timeout in seconds"
     )
 
-    # Сетевые настройки
+    # Network settings
     follow_redirects: Optional[bool] = Field(
-        True, description="Следовать ли редиректам"
+        True, description="Follow redirects"
     )
     max_redirects: Optional[int] = Field(
-        5, description="Максимальное количество редиректов"
+        5, description="Maximum redirects"
     )
 
 
 class URLRequest(BaseModel):
-    """Модель для запроса обработки веб-страницы (обновлено в v1.10.2)."""
+    """Model for web page processing request (updated in v1.10.2)."""
 
     url: str = Field(
         "https://habr.com/ru/companies/softonit/articles/911520/",
-        description="URL веб-страницы для извлечения текста",
+        description="Web page URL for text extraction",
     )
     user_agent: Optional[str] = Field(
         "Text Extraction Bot 1.0",
-        description="Пользовательский User-Agent (опционально, для обратной совместимости)",
+        description="Custom User-Agent (optional, for backward compatibility)",
     )
     extraction_options: Optional[ExtractionOptions] = Field(
-        None, description="Настройки извлечения текста (опционально)"
+        None, description="Text extraction settings (optional)"
     )
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Lifecycle manager для FastAPI приложения."""
-    logger.info(f"Запуск Text Extraction API v{settings.VERSION}")
+    """Lifecycle manager for FastAPI application."""
+    logger.info(f"Starting Text Extraction API v{settings.VERSION}")
 
-    # Очистка временных файлов при старте
+    # Clean up temporary files on startup
     cleanup_temp_files()
 
     yield
 
-    # Graceful shutdown: корректно закрываем пул потоков
-    logger.info("Завершение работы Text Extraction API")
+    # Graceful shutdown: properly close thread pool
+    logger.info("Shutting down Text Extraction API")
     try:
         if hasattr(text_extractor, "_thread_pool"):
-            logger.info("Закрытие пула потоков...")
+            logger.info("Closing thread pool...")
             text_extractor._thread_pool.shutdown(wait=True)
-            logger.info("Пул потоков успешно закрыт")
+            logger.info("Thread pool closed successfully")
     except Exception as e:
-        logger.warning(f"Ошибка при закрытии пула потоков: {str(e)}")
+        logger.warning(f"Error closing thread pool: {str(e)}")
 
-    # Финальная очистка временных файлов
+    # Final cleanup of temporary files
     try:
         cleanup_temp_files()
     except Exception as e:
-        logger.warning(f"Ошибка при финальной очистке: {str(e)}")
+        logger.warning(f"Error during final cleanup: {str(e)}")
 
 
-# Создание FastAPI приложения
+# Create FastAPI application
 app = FastAPI(
     title="Text Extraction API for RAG",
-    description="API для извлечения текста из файлов различных форматов",
+    description="API for extracting text from files in various formats",
     version=settings.VERSION,
     lifespan=lifespan,
     license_info={"name": "MIT License", "url": "https://opensource.org/licenses/MIT"},
     contact={
-        "name": "Барилко Виталий",
+        "name": "Vitalii Barilko",
         "email": "support@softonit.ru",
         "url": "https://softonit.ru",
     },
 )
 
-# Добавление CORS middleware
+# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -173,54 +173,54 @@ app.add_middleware(
 
 @app.middleware("http")
 async def logging_middleware(request: Request, call_next):
-    """Middleware для логирования запросов."""
+    """Middleware for request logging."""
     start_time = time.time()
 
-    logger.info(f"Запрос: {request.method} {request.url}")
+    logger.info(f"Request: {request.method} {request.url}")
 
     try:
         response = await call_next(request)
         process_time = time.time() - start_time
 
         logger.info(
-            f"Ответ: {response.status_code} для {request.method} {request.url} "
-            f"за {process_time:.3f}s"
+            f"Response: {response.status_code} for {request.method} {request.url} "
+            f"in {process_time:.3f}s"
         )
         return response
     except Exception as e:
         process_time = time.time() - start_time
         logger.error(
-            f"Ошибка обработки запроса {request.method} {request.url} "
-            f"за {process_time:.3f}s: {str(e)}"
+            f"Error processing request {request.method} {request.url} "
+            f"in {process_time:.3f}s: {str(e)}"
         )
         raise
 
 
 @app.get("/")
 async def root() -> Dict[str, str]:
-    """Информация о API."""
+    """API information."""
     return {
         "api_name": "Text Extraction API for RAG",
         "version": settings.VERSION,
-        "contact": "Барилко Виталий",
+        "contact": "Vitalii Barilko",
     }
 
 
 @app.get("/health")
 async def health() -> Dict[str, str]:
-    """Проверка состояния API."""
+    """API health check."""
     return {"status": "ok"}
 
 
 @app.get("/v1/supported-formats")
 async def supported_formats() -> Dict[str, list]:
-    """Поддерживаемые форматы файлов."""
+    """Supported file formats."""
     return settings.SUPPORTED_FORMATS
 
 
 @app.post("/v1/extract/file")
 async def extract_text(file: UploadFile = FILE_UPLOAD):
-    """Извлечение текста из файла."""
+    """Extract text from file."""
     try:
         # Санитизация имени файла
         original_filename = file.filename or "unknown_file"

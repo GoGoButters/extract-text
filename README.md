@@ -136,9 +136,9 @@ curl -X POST \
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `MAX_FILE_SIZE` | `20971520` | Maximum file size (20MB) |
-| `MAX_ARCHIVE_SIZE` | `20971520` | Maximum archive size (20MB) |
-| `MAX_EXTRACTED_SIZE` | `104857600` | Maximum extracted content size (100MB) |
+| `MAX_FILE_SIZE_MB` | `20` | Maximum file size (MB) |
+| `MAX_ARCHIVE_SIZE_MB` | `20` | Maximum archive size (MB) |
+| `MAX_EXTRACTED_SIZE_MB` | `100` | Maximum extracted content size (MB) |
 | `MAX_ARCHIVE_NESTING` | `3` | Maximum archive nesting depth |
 | `PROCESSING_TIMEOUT_SECONDS` | `300` | Processing timeout (seconds) |
 

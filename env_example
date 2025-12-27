@@ -15,62 +15,64 @@ PROCESSING_TIMEOUT_SECONDS=300
 # PERFORMANCE SETTINGS
 # ===========================================
 
-# Number of CPU cores on the server (used to auto-calculate WORKERS)
-# For Docker: number of available cores in container
-# For bare metal: number of physical server cores
+# Number of CPU cores on the server
 CPU_CORES=4
 
 # Number of uvicorn worker processes
-# For development: 1
-# For production recommended: 2 * CPU_CORES + 1 (auto-calculated in prod)
+# Development: 1, Production: 2 * CPU_CORES + 1
 WORKERS=1
 
 # ===========================================
-# FILE PROCESSING SETTINGS
+# ALL SIZE/MEMORY SETTINGS ARE IN MEGABYTES
 # ===========================================
 
-# Maximum file size (20MB)
-MAX_FILE_SIZE=20971520
+# ===========================================
+# FILE PROCESSING (MB)
+# ===========================================
 
-# Archive settings
-MAX_ARCHIVE_SIZE=20971520
-MAX_EXTRACTED_SIZE=104857600
+# Maximum file size (MB)
+MAX_FILE_SIZE_MB=20
+
+# Maximum archive size (MB)
+MAX_ARCHIVE_SIZE_MB=20
+
+# Maximum extracted content size (MB)
+MAX_EXTRACTED_SIZE_MB=100
+
+# Maximum archive nesting depth
 MAX_ARCHIVE_NESTING=3
 
 # ===========================================
-# MEMORY LIMITS (ALL VALUES IN MEGABYTES)
+# CONTAINER MEMORY LIMITS (MB)
 # ===========================================
 
 # Maximum memory for the entire container (MB)
-# Used in docker-compose.yml for mem_limit
-# Container will be restarted when this limit is exceeded
-# Recommended: 2048 for small, 4096 for medium, 8192 for large systems
+# Container will be restarted when exceeded
+# Recommended: 2048 small, 4096 medium, 8192 large
 MAX_MEMORY_MB=2048
 
 # Request limit for automatic uvicorn worker restart
-# Worker restarts after processing this number of requests
-# Helps release accumulated memory from potential leaks
-# 0 = no limit (NOT RECOMMENDED in production)
+# Helps release accumulated memory from leaks
+# 0 = no limit (NOT RECOMMENDED)
 UVICORN_LIMIT_MAX_REQUESTS=1000
+
+# ===========================================
+# SUBPROCESS MEMORY LIMITS (MB)
+# ===========================================
 
 # Enable/disable resource limits for child processes
 ENABLE_RESOURCE_LIMITS=true
 
 # Maximum memory for child processes (MB)
-# Base limit for most subprocesses
 MAX_SUBPROCESS_MEMORY_MB=1024
 
 # Maximum memory for LibreOffice (MB)
-# LibreOffice may need more memory for complex documents
 MAX_LIBREOFFICE_MEMORY_MB=1536
 
 # Maximum memory for Tesseract OCR (MB)
-# Tesseract usually needs less, but large images require more
 MAX_TESSERACT_MEMORY_MB=512
 
 # Maximum resolution for OCR images (pixels)
-# Images larger than this will be rejected
-# 50MP (e.g., 7071x7071 or 10000x5243)
 MAX_OCR_IMAGE_PIXELS=52428800
 
 # ===========================================
@@ -84,10 +86,10 @@ MAX_OCR_IMAGE_PIXELS=52428800
 # MAX_TESSERACT_MEMORY_MB=256
 
 # For medium systems (8-16GB RAM):
-MAX_MEMORY_MB=2048
-MAX_SUBPROCESS_MEMORY_MB=1024
-MAX_LIBREOFFICE_MEMORY_MB=2048
-MAX_TESSERACT_MEMORY_MB=512
+# MAX_MEMORY_MB=2048
+# MAX_SUBPROCESS_MEMORY_MB=1024
+# MAX_LIBREOFFICE_MEMORY_MB=2048
+# MAX_TESSERACT_MEMORY_MB=512
 
 # For large systems (32GB+ RAM):
 # MAX_MEMORY_MB=8192
@@ -95,80 +97,52 @@ MAX_TESSERACT_MEMORY_MB=512
 # MAX_LIBREOFFICE_MEMORY_MB=4096
 # MAX_TESSERACT_MEMORY_MB=1024
 
-# To disable limits (NOT RECOMMENDED in production):
-# ENABLE_RESOURCE_LIMITS=false
-
 # Logging
 LOG_LEVEL=INFO
 
 # ===========================================
-# WEB EXTRACTOR SETTINGS (v1.10.0)
+# WEB EXTRACTOR SETTINGS
 # ===========================================
 
-# Minimum image size for OCR in pixels (width * height)
-# 150x150 = 22500 pixels
+# Minimum image size for OCR (pixels, width * height)
 MIN_IMAGE_SIZE_FOR_OCR=22500
 
-# Maximum number of images to process per web page
+# Maximum images to process per web page
 MAX_IMAGES_PER_PAGE=20
 
-# Web page load timeout in seconds
+# Web page load timeout (seconds)
 WEB_PAGE_TIMEOUT=30
 
-# Image download timeout in seconds
+# Image download timeout (seconds)
 IMAGE_DOWNLOAD_TIMEOUT=15
 
 # Default User-Agent for web requests
 DEFAULT_USER_AGENT="Text Extraction Bot 1.0"
 
-# Enable JavaScript execution (requires additional resources)
-# false - static HTML only (default)
-# true - JavaScript execution for dynamic content
+# Enable JavaScript execution (requires Playwright)
 ENABLE_JAVASCRIPT=false
 
 # Blocked IP ranges for SSRF protection
 BLOCKED_IP_RANGES="127.0.0.0/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,169.254.0.0/16,::1/128,fe80::/10"
 
-# Blocked hostnames (hostname-based blocking)
+# Blocked hostnames
 BLOCKED_HOSTNAMES="localhost,host.docker.internal,ip6-localhost,ip6-loopback"
 
 # ===========================================
-# WEB EXTRACTOR SETTINGS v1.10.1 (PLAYWRIGHT)
+# PLAYWRIGHT SETTINGS
 # ===========================================
 
-# Enable base64 image support in web pages
+# Enable base64 image support
 ENABLE_BASE64_IMAGES=true
 
-# Delay after JavaScript load in seconds
+# Delay after JavaScript load (seconds)
 WEB_PAGE_DELAY=3
 
-# Enable lazy loading image wait (auto-scroll)
+# Enable lazy loading (auto-scroll)
 ENABLE_LAZY_LOADING_WAIT=true
 
-# Separate timeout for JS rendering in seconds
+# JS rendering timeout (seconds)
 JS_RENDER_TIMEOUT=10
 
 # Maximum scroll attempts for lazy loading
 MAX_SCROLL_ATTEMPTS=3
-
-# ===========================================
-# PLAYWRIGHT CONFIGURATION RECOMMENDATIONS
-# ===========================================
-
-# For fast processing without JS (minimal resources):
-# ENABLE_JAVASCRIPT=false
-# ENABLE_BASE64_IMAGES=true
-# ENABLE_LAZY_LOADING_WAIT=false
-
-# For full processing with JavaScript (requires more resources):
-ENABLE_JAVASCRIPT=true
-ENABLE_BASE64_IMAGES=true
-ENABLE_LAZY_LOADING_WAIT=true
-WEB_PAGE_DELAY=5
-JS_RENDER_TIMEOUT=15
-MAX_SCROLL_ATTEMPTS=5
-
-# For processing complex SPA applications:
-# ENABLE_JAVASCRIPT=true
-# WEB_PAGE_DELAY=10
-# JS_RENDER_TIMEOUT=20

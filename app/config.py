@@ -7,31 +7,35 @@ from typing import List
 class Settings:
     """Настройки приложения."""
 
-    # Основные настройки
+    # Basic settings
     VERSION: str = "1.10.8"
     DEBUG: bool = os.getenv("DEBUG", "false").lower() == "true"
 
-    # Настройки API
+    # API settings
     API_PORT: int = int(os.getenv("API_PORT", "7555"))
 
-    # Настройки обработки файлов
-    MAX_FILE_SIZE: int = int(os.getenv("MAX_FILE_SIZE", str(20 * 1024 * 1024)))  # 20 MB
+    # ===========================================
+    # ALL SIZE/MEMORY SETTINGS ARE IN MEGABYTES
+    # ===========================================
+    
+    # File processing settings (MB, converted to bytes internally)
+    MAX_FILE_SIZE_MB: int = int(os.getenv("MAX_FILE_SIZE_MB", "20"))  # 20 MB
+    MAX_FILE_SIZE: int = MAX_FILE_SIZE_MB * 1024 * 1024  # Convert to bytes
+    
     PROCESSING_TIMEOUT_SECONDS: int = int(
         os.getenv("PROCESSING_TIMEOUT_SECONDS", "300")
     )
 
     # Child process resource management settings
-    # All memory limits are specified in MEGABYTES for consistency
-    
-    # Maximum memory for child processes (in MB, converted to bytes internally)
+    # Maximum memory for child processes (MB)
     MAX_SUBPROCESS_MEMORY_MB: int = int(os.getenv("MAX_SUBPROCESS_MEMORY_MB", "1024"))  # 1 GB
     MAX_SUBPROCESS_MEMORY: int = MAX_SUBPROCESS_MEMORY_MB * 1024 * 1024  # Convert to bytes
 
-    # Maximum memory for LibreOffice (in MB)
+    # Maximum memory for LibreOffice (MB)
     MAX_LIBREOFFICE_MEMORY_MB: int = int(os.getenv("MAX_LIBREOFFICE_MEMORY_MB", "1536"))  # 1.5 GB
     MAX_LIBREOFFICE_MEMORY: int = MAX_LIBREOFFICE_MEMORY_MB * 1024 * 1024  # Convert to bytes
 
-    # Maximum memory for Tesseract (in MB)
+    # Maximum memory for Tesseract (MB)
     MAX_TESSERACT_MEMORY_MB: int = int(os.getenv("MAX_TESSERACT_MEMORY_MB", "512"))  # 512 MB
     MAX_TESSERACT_MEMORY: int = MAX_TESSERACT_MEMORY_MB * 1024 * 1024  # Convert to bytes
 
@@ -40,33 +44,34 @@ class Settings:
         os.getenv("MAX_OCR_IMAGE_PIXELS", str(50 * 1024 * 1024))
     )  # 50 MP
 
-    # Включить/выключить ограничения ресурсов
+    # Enable/disable resource limits
     ENABLE_RESOURCE_LIMITS: bool = (
         os.getenv("ENABLE_RESOURCE_LIMITS", "true").lower() == "true"
     )
 
-    # Максимальный объем памяти для контейнера в мегабайтах (по умолчанию: 2048 MB = 2 GB)
-    # Используется в docker-compose.yml для mem_limit
+    # Maximum container memory (MB)
+    # Used in docker-compose.yml for mem_limit
     MAX_MEMORY_MB: int = int(os.getenv("MAX_MEMORY_MB", "2048"))
 
-    # Лимит запросов для перезапуска воркера uvicorn (по умолчанию: 1000)
-    # После обработки этого количества запросов воркер перезапускается, освобождая накопленную память
-    # 0 = без лимита
+    # Request limit for uvicorn worker restart
+    # 0 = no limit
     UVICORN_LIMIT_MAX_REQUESTS: int = int(
         os.getenv("UVICORN_LIMIT_MAX_REQUESTS", "1000")
     )
 
-    # Настройки OCR
+    # OCR settings
     OCR_LANGUAGES: str = os.getenv("OCR_LANGUAGES", "rus+eng")
 
-    # Настройки производительности
+    # Performance settings
     WORKERS: int = int(os.getenv("WORKERS", "1"))
 
-    # Настройки архивов
-    MAX_ARCHIVE_SIZE: int = int(os.getenv("MAX_ARCHIVE_SIZE", "20971520"))  # 20 MB
-    MAX_EXTRACTED_SIZE: int = int(
-        os.getenv("MAX_EXTRACTED_SIZE", "104857600")
-    )  # 100 MB
+    # Archive settings (MB, converted to bytes internally)
+    MAX_ARCHIVE_SIZE_MB: int = int(os.getenv("MAX_ARCHIVE_SIZE_MB", "20"))  # 20 MB
+    MAX_ARCHIVE_SIZE: int = MAX_ARCHIVE_SIZE_MB * 1024 * 1024  # Convert to bytes
+    
+    MAX_EXTRACTED_SIZE_MB: int = int(os.getenv("MAX_EXTRACTED_SIZE_MB", "100"))  # 100 MB
+    MAX_EXTRACTED_SIZE: int = MAX_EXTRACTED_SIZE_MB * 1024 * 1024  # Convert to bytes
+    
     MAX_ARCHIVE_NESTING: int = int(os.getenv("MAX_ARCHIVE_NESTING", "3"))
 
     # Настройки веб-экстрактора (v1.10.0)

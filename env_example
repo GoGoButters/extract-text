@@ -1,87 +1,97 @@
-# Настройки API
+# ===========================================
+# API SETTINGS
+# ===========================================
+
 API_PORT=7555
 DEBUG=false
 
-# Настройки OCR
+# OCR Settings
 OCR_LANGUAGES=rus+eng
 
-# Настройки обработки
+# Processing Settings
 PROCESSING_TIMEOUT_SECONDS=300
 
-# Настройки производительности
-# Количество ядер CPU сервера (используется для автоматического расчета WORKERS)
-# Для Docker: количество доступных ядер в контейнере
-# Для bare metal: количество физических ядер сервера
+# ===========================================
+# PERFORMANCE SETTINGS
+# ===========================================
+
+# Number of CPU cores on the server (used to auto-calculate WORKERS)
+# For Docker: number of available cores in container
+# For bare metal: number of physical server cores
 CPU_CORES=4
 
-# Количество worker-процессов uvicorn
-# Для разработки: 1
-# Для продакшена рекомендуется: 2 * CPU_CORES + 1 (автоматически вычисляется в prod)
+# Number of uvicorn worker processes
+# For development: 1
+# For production recommended: 2 * CPU_CORES + 1 (auto-calculated in prod)
 WORKERS=1
 
-# Настройки обработки файлов
-# 20MB в байтах
+# ===========================================
+# FILE PROCESSING SETTINGS
+# ===========================================
+
+# Maximum file size (20MB in bytes)
 MAX_FILE_SIZE=20971520
 
-# Настройки архивов
-# 20MB
+# Archive settings
+# Maximum archive size (20MB)
 MAX_ARCHIVE_SIZE=20971520
-# 100MB
+# Maximum extracted content size (100MB)
 MAX_EXTRACTED_SIZE=104857600
+# Maximum archive nesting depth
 MAX_ARCHIVE_NESTING=3
 
 # ===========================================
-# НАСТРОЙКИ ЗАЩИТЫ ОТ DoS АТАК
+# CONTAINER MEMORY LIMITS
 # ===========================================
 
-# ===========================================
-# ОГРАНИЧЕНИЕ ПАМЯТИ КОНТЕЙНЕРА (НОВОЕ)
-# ===========================================
-
-# Максимальный объем памяти для всего контейнера в мегабайтах
-# Это значение используется в docker-compose.yml для mem_limit
-# При превышении этого лимита контейнер будет перезапущен
-# Рекомендуется: 2GB для небольших систем, 4GB для средних, 8GB для крупных
+# Maximum memory for the entire container in megabytes
+# This value is used in docker-compose.yml for mem_limit
+# Container will be restarted when this limit is exceeded
+# Recommended: 2GB for small systems, 4GB for medium, 8GB for large
 MAX_MEMORY_MB=2048
 
-# Лимит запросов для автоматического перезапуска воркера uvicorn
-# После обработки этого количества запросов воркер перезапускается
-# Это помогает освободить накопленную память от потенциальных утечек
-# 0 = без лимита (НЕ РЕКОМЕНДУЕТСЯ в production)
+# Request limit for automatic uvicorn worker restart
+# Worker restarts after processing this number of requests
+# This helps release accumulated memory from potential leaks
+# 0 = no limit (NOT RECOMMENDED in production)
 UVICORN_LIMIT_MAX_REQUESTS=1000
 
-# Включить/выключить ограничения ресурсов для дочерних процессов
+# ===========================================
+# DoS PROTECTION SETTINGS
+# ===========================================
+
+# Enable/disable resource limits for child processes
 ENABLE_RESOURCE_LIMITS=true
 
-# Максимальное потребление памяти дочерними процессами (в байтах)
-# 1GB - базовый лимит
+# Maximum memory consumption by child processes (in bytes)
+# 1GB - base limit
 MAX_SUBPROCESS_MEMORY=1073741824
 
-# Максимальное потребление памяти для LibreOffice (в байтах)
-# LibreOffice может потреблять больше памяти при конвертации сложных документов
+# Maximum memory consumption for LibreOffice (in bytes)
+# LibreOffice may consume more memory when converting complex documents
 # 1.5GB
 MAX_LIBREOFFICE_MEMORY=1610612736
 
-# Максимальное потребление памяти для Tesseract (в байтах)
-# Tesseract обычно потребляет меньше памяти, но может быть требователен к большим изображениям
+# Maximum memory consumption for Tesseract (in bytes)
+# Tesseract usually consumes less memory but may be demanding for large images
 # 512MB
 MAX_TESSERACT_MEMORY=536870912
 
-# Максимальное разрешение для OCR изображений (в пикселях)
-# Изображения больше этого размера будут отклонены
-# 50MP (например, 7071x7071 или 10000x5243)
+# Maximum resolution for OCR images (in pixels)
+# Images larger than this will be rejected
+# 50MP (e.g., 7071x7071 or 10000x5243)
 MAX_OCR_IMAGE_PIXELS=52428800
 
 # ===========================================
-# РЕКОМЕНДАЦИИ ПО НАСТРОЙКЕ
+# CONFIGURATION RECOMMENDATIONS
 # ===========================================
 
-# Для небольших систем (2-4GB RAM):
+# For small systems (2-4GB RAM):
 # MAX_SUBPROCESS_MEMORY=536870912      # 512MB
 # MAX_LIBREOFFICE_MEMORY=1073741824    # 1GB
 # MAX_TESSERACT_MEMORY=268435456       # 256MB
 
-# Для средних систем (8-16GB RAM) - АКТИВНЫЕ НАСТРОЙКИ:
+# For medium systems (8-16GB RAM) - ACTIVE SETTINGS:
 # 1GB
 MAX_SUBPROCESS_MEMORY=1073741824
 # 2GB
@@ -89,86 +99,86 @@ MAX_LIBREOFFICE_MEMORY=2147483648
 # 512MB
 MAX_TESSERACT_MEMORY=536870912
 
-# Для крупных систем (32GB+ RAM):
+# For large systems (32GB+ RAM):
 # MAX_SUBPROCESS_MEMORY=2147483648     # 2GB
 # MAX_LIBREOFFICE_MEMORY=4294967296    # 4GB
 # MAX_TESSERACT_MEMORY=1073741824      # 1GB
 
-# Для отключения ограничений (НЕ РЕКОМЕНДУЕТСЯ в production):
+# To disable limits (NOT RECOMMENDED in production):
 # ENABLE_RESOURCE_LIMITS=false
 
-# Логирование
+# Logging
 LOG_LEVEL=INFO
 
 # ===========================================
-# НАСТРОЙКИ ВЕБ-ЭКСТРАКТОРА (v1.10.0)
+# WEB EXTRACTOR SETTINGS (v1.10.0)
 # ===========================================
 
-# Минимальный размер изображений для OCR в пикселях (ширина * высота)
-# 150x150 = 22500 пикселей
+# Minimum image size for OCR in pixels (width * height)
+# 150x150 = 22500 pixels
 MIN_IMAGE_SIZE_FOR_OCR=22500
 
-# Максимальное количество изображений для обработки на одной веб-странице
+# Maximum number of images to process per web page
 MAX_IMAGES_PER_PAGE=20
 
-# Таймаут загрузки веб-страницы в секундах
+# Web page load timeout in seconds
 WEB_PAGE_TIMEOUT=30
 
-# Таймаут загрузки изображения в секундах
+# Image download timeout in seconds
 IMAGE_DOWNLOAD_TIMEOUT=15
 
-# User-Agent по умолчанию для веб-запросов
+# Default User-Agent for web requests
 DEFAULT_USER_AGENT="Text Extraction Bot 1.0"
 
-# Включить выполнение JavaScript (требует дополнительных ресурсов)
-# false - только статический HTML (по умолчанию)
-# true - выполнение JavaScript для динамического контента
+# Enable JavaScript execution (requires additional resources)
+# false - static HTML only (default)
+# true - JavaScript execution for dynamic content
 ENABLE_JAVASCRIPT=false
 
-# Заблокированные IP-диапазоны для защиты от SSRF-атак
-# Блокируются: localhost, частные сети (10.*, 192.168.*, 172.16-31.*), IPv6 localhost, metadata service
+# Blocked IP ranges for SSRF protection
+# Blocked: localhost, private networks (10.*, 192.168.*, 172.16-31.*), IPv6 localhost, metadata service
 BLOCKED_IP_RANGES="127.0.0.0/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,169.254.0.0/16,::1/128,fe80::/10"
 
-# Заблокированные хосты (hostname-based блокировка)
-# Блокируются: localhost, Docker хосты, IPv6 loopback имена
+# Blocked hostnames (hostname-based blocking)
+# Blocked: localhost, Docker hosts, IPv6 loopback names
 BLOCKED_HOSTNAMES="localhost,host.docker.internal,ip6-localhost,ip6-loopback"
 
 # ===========================================
-# НАСТРОЙКИ ВЕБ-ЭКСТРАКТОРА v1.10.1 (PLAYWRIGHT)
+# WEB EXTRACTOR SETTINGS v1.10.1 (PLAYWRIGHT)
 # ===========================================
 
-# Включить поддержку base64 изображений в веб-страницах
-# true - обрабатывать изображения в формате data:image/...;base64,... (по умолчанию)
-# false - игнорировать base64 изображения
+# Enable base64 image support in web pages
+# true - process images in data:image/...;base64,... format (default)
+# false - ignore base64 images
 ENABLE_BASE64_IMAGES=true
 
-# Задержка после загрузки JavaScript в секундах
-# Время ожидания завершения JS-рендеринга после основной загрузки страницы
+# Delay after JavaScript load in seconds
+# Wait time for JS rendering to complete after main page load
 WEB_PAGE_DELAY=3
 
-# Включить ожидание lazy loading изображений
-# true - автоматический скролл страницы для активации ленивой загрузки (по умолчанию)
-# false - не скроллить страницу
+# Enable lazy loading image wait
+# true - auto-scroll page to activate lazy loading (default)
+# false - don't scroll page
 ENABLE_LAZY_LOADING_WAIT=true
 
-# Отдельный таймаут для JS-рендеринга в секундах
-# Время ожидания стабилизации сетевой активности при выполнении JavaScript
+# Separate timeout for JS rendering in seconds
+# Time to wait for network activity stabilization during JavaScript execution
 JS_RENDER_TIMEOUT=10
 
-# Максимальное количество попыток скролла для lazy loading
-# Защита от бесконечных страниц
+# Maximum scroll attempts for lazy loading
+# Protection against infinite pages
 MAX_SCROLL_ATTEMPTS=3
 
 # ===========================================
-# РЕКОМЕНДАЦИИ ПО НАСТРОЙКЕ PLAYWRIGHT
+# PLAYWRIGHT CONFIGURATION RECOMMENDATIONS
 # ===========================================
 
-# Для быстрой обработки без JS (минимальные ресурсы):
+# For fast processing without JS (minimal resources):
 # ENABLE_JAVASCRIPT=false
 # ENABLE_BASE64_IMAGES=true
 # ENABLE_LAZY_LOADING_WAIT=false
 
-# Для полной обработки с JavaScript (требует больше ресурсов):
+# For full processing with JavaScript (requires more resources):
 ENABLE_JAVASCRIPT=true
 ENABLE_BASE64_IMAGES=true
 ENABLE_LAZY_LOADING_WAIT=true
@@ -176,7 +186,7 @@ WEB_PAGE_DELAY=5
 JS_RENDER_TIMEOUT=15
 MAX_SCROLL_ATTEMPTS=5
 
-# Для обработки сложных SPA приложений:
+# For processing complex SPA applications:
 # ENABLE_JAVASCRIPT=true
 # WEB_PAGE_DELAY=10
-# JS_RENDER_TIMEOUT=20 
+# JS_RENDER_TIMEOUT=20

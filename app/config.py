@@ -20,23 +20,22 @@ class Settings:
         os.getenv("PROCESSING_TIMEOUT_SECONDS", "300")
     )
 
-    # Настройки управления ресурсами дочерних процессов
-    # Максимальное потребление памяти дочерними процессами (в байтах)
-    MAX_SUBPROCESS_MEMORY: int = int(
-        os.getenv("MAX_SUBPROCESS_MEMORY", str(1024 * 1024 * 1024))
-    )  # 1 GB
+    # Child process resource management settings
+    # All memory limits are specified in MEGABYTES for consistency
+    
+    # Maximum memory for child processes (in MB, converted to bytes internally)
+    MAX_SUBPROCESS_MEMORY_MB: int = int(os.getenv("MAX_SUBPROCESS_MEMORY_MB", "1024"))  # 1 GB
+    MAX_SUBPROCESS_MEMORY: int = MAX_SUBPROCESS_MEMORY_MB * 1024 * 1024  # Convert to bytes
 
-    # Максимальное потребление памяти для LibreOffice (в байтах)
-    MAX_LIBREOFFICE_MEMORY: int = int(
-        os.getenv("MAX_LIBREOFFICE_MEMORY", str(1536 * 1024 * 1024))
-    )  # 1.5 GB
+    # Maximum memory for LibreOffice (in MB)
+    MAX_LIBREOFFICE_MEMORY_MB: int = int(os.getenv("MAX_LIBREOFFICE_MEMORY_MB", "1536"))  # 1.5 GB
+    MAX_LIBREOFFICE_MEMORY: int = MAX_LIBREOFFICE_MEMORY_MB * 1024 * 1024  # Convert to bytes
 
-    # Максимальное потребление памяти для Tesseract (в байтах)
-    MAX_TESSERACT_MEMORY: int = int(
-        os.getenv("MAX_TESSERACT_MEMORY", str(512 * 1024 * 1024))
-    )  # 512 MB
+    # Maximum memory for Tesseract (in MB)
+    MAX_TESSERACT_MEMORY_MB: int = int(os.getenv("MAX_TESSERACT_MEMORY_MB", "512"))  # 512 MB
+    MAX_TESSERACT_MEMORY: int = MAX_TESSERACT_MEMORY_MB * 1024 * 1024  # Convert to bytes
 
-    # Максимальное разрешение для OCR изображений (пиксели)
+    # Maximum resolution for OCR images (pixels)
     MAX_OCR_IMAGE_PIXELS: int = int(
         os.getenv("MAX_OCR_IMAGE_PIXELS", str(50 * 1024 * 1024))
     )  # 50 MP

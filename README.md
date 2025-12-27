@@ -128,9 +128,9 @@ curl -X POST \
 | `MAX_MEMORY_MB` | `2048` | Maximum container memory (MB) |
 | `UVICORN_LIMIT_MAX_REQUESTS` | `1000` | Restart worker after N requests |
 | `ENABLE_RESOURCE_LIMITS` | `true` | Enable resource limits for subprocesses |
-| `MAX_SUBPROCESS_MEMORY` | `1073741824` | Subprocess memory limit (1GB) |
-| `MAX_LIBREOFFICE_MEMORY` | `1610612736` | LibreOffice memory limit (1.5GB) |
-| `MAX_TESSERACT_MEMORY` | `536870912` | Tesseract memory limit (512MB) |
+| `MAX_SUBPROCESS_MEMORY_MB` | `1024` | Subprocess memory limit (MB) |
+| `MAX_LIBREOFFICE_MEMORY_MB` | `1536` | LibreOffice memory limit (MB) |
+| `MAX_TESSERACT_MEMORY_MB` | `512` | Tesseract memory limit (MB) |
 
 ### File Processing
 

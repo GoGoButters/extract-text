@@ -29,80 +29,71 @@ WORKERS=1
 # FILE PROCESSING SETTINGS
 # ===========================================
 
-# Maximum file size (20MB in bytes)
+# Maximum file size (20MB)
 MAX_FILE_SIZE=20971520
 
 # Archive settings
-# Maximum archive size (20MB)
 MAX_ARCHIVE_SIZE=20971520
-# Maximum extracted content size (100MB)
 MAX_EXTRACTED_SIZE=104857600
-# Maximum archive nesting depth
 MAX_ARCHIVE_NESTING=3
 
 # ===========================================
-# CONTAINER MEMORY LIMITS
+# MEMORY LIMITS (ALL VALUES IN MEGABYTES)
 # ===========================================
 
-# Maximum memory for the entire container in megabytes
-# This value is used in docker-compose.yml for mem_limit
+# Maximum memory for the entire container (MB)
+# Used in docker-compose.yml for mem_limit
 # Container will be restarted when this limit is exceeded
-# Recommended: 2GB for small systems, 4GB for medium, 8GB for large
+# Recommended: 2048 for small, 4096 for medium, 8192 for large systems
 MAX_MEMORY_MB=2048
 
 # Request limit for automatic uvicorn worker restart
 # Worker restarts after processing this number of requests
-# This helps release accumulated memory from potential leaks
+# Helps release accumulated memory from potential leaks
 # 0 = no limit (NOT RECOMMENDED in production)
 UVICORN_LIMIT_MAX_REQUESTS=1000
-
-# ===========================================
-# DoS PROTECTION SETTINGS
-# ===========================================
 
 # Enable/disable resource limits for child processes
 ENABLE_RESOURCE_LIMITS=true
 
-# Maximum memory consumption by child processes (in bytes)
-# 1GB - base limit
-MAX_SUBPROCESS_MEMORY=1073741824
+# Maximum memory for child processes (MB)
+# Base limit for most subprocesses
+MAX_SUBPROCESS_MEMORY_MB=1024
 
-# Maximum memory consumption for LibreOffice (in bytes)
-# LibreOffice may consume more memory when converting complex documents
-# 1.5GB
-MAX_LIBREOFFICE_MEMORY=1610612736
+# Maximum memory for LibreOffice (MB)
+# LibreOffice may need more memory for complex documents
+MAX_LIBREOFFICE_MEMORY_MB=1536
 
-# Maximum memory consumption for Tesseract (in bytes)
-# Tesseract usually consumes less memory but may be demanding for large images
-# 512MB
-MAX_TESSERACT_MEMORY=536870912
+# Maximum memory for Tesseract OCR (MB)
+# Tesseract usually needs less, but large images require more
+MAX_TESSERACT_MEMORY_MB=512
 
-# Maximum resolution for OCR images (in pixels)
+# Maximum resolution for OCR images (pixels)
 # Images larger than this will be rejected
 # 50MP (e.g., 7071x7071 or 10000x5243)
 MAX_OCR_IMAGE_PIXELS=52428800
 
 # ===========================================
-# CONFIGURATION RECOMMENDATIONS
+# MEMORY CONFIGURATION RECOMMENDATIONS
 # ===========================================
 
 # For small systems (2-4GB RAM):
-# MAX_SUBPROCESS_MEMORY=536870912      # 512MB
-# MAX_LIBREOFFICE_MEMORY=1073741824    # 1GB
-# MAX_TESSERACT_MEMORY=268435456       # 256MB
+# MAX_MEMORY_MB=1536
+# MAX_SUBPROCESS_MEMORY_MB=512
+# MAX_LIBREOFFICE_MEMORY_MB=1024
+# MAX_TESSERACT_MEMORY_MB=256
 
-# For medium systems (8-16GB RAM) - ACTIVE SETTINGS:
-# 1GB
-MAX_SUBPROCESS_MEMORY=1073741824
-# 2GB
-MAX_LIBREOFFICE_MEMORY=2147483648
-# 512MB
-MAX_TESSERACT_MEMORY=536870912
+# For medium systems (8-16GB RAM):
+MAX_MEMORY_MB=2048
+MAX_SUBPROCESS_MEMORY_MB=1024
+MAX_LIBREOFFICE_MEMORY_MB=2048
+MAX_TESSERACT_MEMORY_MB=512
 
 # For large systems (32GB+ RAM):
-# MAX_SUBPROCESS_MEMORY=2147483648     # 2GB
-# MAX_LIBREOFFICE_MEMORY=4294967296    # 4GB
-# MAX_TESSERACT_MEMORY=1073741824      # 1GB
+# MAX_MEMORY_MB=8192
+# MAX_SUBPROCESS_MEMORY_MB=2048
+# MAX_LIBREOFFICE_MEMORY_MB=4096
+# MAX_TESSERACT_MEMORY_MB=1024
 
 # To disable limits (NOT RECOMMENDED in production):
 # ENABLE_RESOURCE_LIMITS=false
@@ -136,11 +127,9 @@ DEFAULT_USER_AGENT="Text Extraction Bot 1.0"
 ENABLE_JAVASCRIPT=false
 
 # Blocked IP ranges for SSRF protection
-# Blocked: localhost, private networks (10.*, 192.168.*, 172.16-31.*), IPv6 localhost, metadata service
 BLOCKED_IP_RANGES="127.0.0.0/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,169.254.0.0/16,::1/128,fe80::/10"
 
 # Blocked hostnames (hostname-based blocking)
-# Blocked: localhost, Docker hosts, IPv6 loopback names
 BLOCKED_HOSTNAMES="localhost,host.docker.internal,ip6-localhost,ip6-loopback"
 
 # ===========================================
@@ -148,25 +137,18 @@ BLOCKED_HOSTNAMES="localhost,host.docker.internal,ip6-localhost,ip6-loopback"
 # ===========================================
 
 # Enable base64 image support in web pages
-# true - process images in data:image/...;base64,... format (default)
-# false - ignore base64 images
 ENABLE_BASE64_IMAGES=true
 
 # Delay after JavaScript load in seconds
-# Wait time for JS rendering to complete after main page load
 WEB_PAGE_DELAY=3
 
-# Enable lazy loading image wait
-# true - auto-scroll page to activate lazy loading (default)
-# false - don't scroll page
+# Enable lazy loading image wait (auto-scroll)
 ENABLE_LAZY_LOADING_WAIT=true
 
 # Separate timeout for JS rendering in seconds
-# Time to wait for network activity stabilization during JavaScript execution
 JS_RENDER_TIMEOUT=10
 
 # Maximum scroll attempts for lazy loading
-# Protection against infinite pages
 MAX_SCROLL_ATTEMPTS=3
 
 # ===========================================

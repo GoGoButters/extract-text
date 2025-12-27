@@ -222,30 +222,30 @@ async def supported_formats() -> Dict[str, list]:
 async def extract_text(file: UploadFile = FILE_UPLOAD):
     """Extract text from file."""
     try:
-        # Санитизация имени файла
+        # Sanitize filename
         original_filename = file.filename or "unknown_file"
         safe_filename_for_processing = sanitize_filename(original_filename)
 
-        logger.info(f"Получен файл для обработки: {original_filename}")
+        logger.info(f"Received file for processing: {original_filename}")
 
-        # Проверка наличия размера файла (защита от DoS)
+        # Check file size header (DoS protection)
         if file.size is None:
             logger.warning(
-                f"Файл {original_filename} не содержит заголовок Content-Length"
+                f"File {original_filename} missing Content-Length header"
             )
             return JSONResponse(
                 status_code=400,
                 content={
                     "status": "error",
                     "filename": original_filename,
-                    "message": "Отсутствует заголовок Content-Length. Пожалуйста, убедитесь, что размер файла указан в запросе.",
+                    "message": "Missing Content-Length header. Please ensure file size is specified in request.",
                 },
             )
 
-        # Проверка размера файла
+        # Check file size
         if file.size > settings.MAX_FILE_SIZE:
             logger.warning(
-                f"Файл {original_filename} слишком большой: {file.size} bytes"
+                f"File {original_filename} too large: {file.size} bytes"
             )
             raise HTTPException(
                 status_code=413, detail="File size exceeds maximum allowed size"

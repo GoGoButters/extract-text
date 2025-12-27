@@ -1,42 +1,45 @@
+version: "2.4"
+
 services:
   api:
     build: .
     container_name: extract-text-dev
     command: >
-      uvicorn app.main:app 
-      --host 0.0.0.0 
-      --port ${API_PORT:-7555} 
-      --workers ${WORKERS:-1} 
-      --limit-max-requests ${UVICORN_LIMIT_MAX_REQUESTS:-1000}
-      --reload
+      uvicorn app.main:app  --host 0.0.0.0  --port ${API_PORT:-7555}  --workers ${WORKERS:-1}  --limit-max-requests ${UVICORN_LIMIT_MAX_REQUESTS:-1000} --reload
     ports:
       - "7555:7555"
     env_file:
       - .env
-    
-    # КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Ограничение памяти контейнера
-    # Предотвращает OOM на хосте, контейнер будет перезапущен при превышении лимита
+
+    # ОГРАНИЧЕНИЕ ПАМЯТИ КОНТЕЙНЕРА (docker-compose v2.4 формат - гарантированно работает!)
+    # При превышении лимита контейнер будет убит OOM Killer и перезапущен
     mem_limit: ${MAX_MEMORY_MB:-2048}m
     memswap_limit: ${MAX_MEMORY_MB:-2048}m
-    
+
+    # Резервирование памяти (мягкий лимит)
+    mem_reservation: 512m
+
+    # OOM Score - приоритет для OOM Killer (чем выше, тем раньше убьют)
+    oom_score_adj: 500
+
     # Автоматический перезапуск при OOM или ошибках
     restart: unless-stopped
-    
+
     # Логирование
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
-    
+
     volumes:
       # Горячая перезагрузка для режима разработки
       - ./app:/code/app
       - ./tests:/code/tests
-    
+
     # Проверка здоровья
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:7555/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:7555/health" ]
       interval: 30s
       timeout: 10s
       retries: 3

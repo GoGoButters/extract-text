@@ -1,4 +1,4 @@
-"""Модуль для извлечения текста из файлов различных форматов."""
+"""Module for extracting text from files of various formats."""
 
 import asyncio
 import concurrent.futures
@@ -16,7 +16,7 @@ import zipfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-# Импорты для архивов
+# Archive imports
 try:
     import rarfile
 except ImportError:
@@ -27,7 +27,7 @@ try:
 except ImportError:
     py7zr = None
 
-# Импорты для различных форматов
+# Imports for various formats
 try:
     import pdfplumber
     import PyPDF2
@@ -86,7 +86,7 @@ try:
 except ImportError:
     yaml = None
 
-# Веб-экстракция (новое в v1.10.0)
+# Web extraction (new in v1.10.0)
 try:
     import ipaddress
     from urllib.parse import urljoin, urlparse
@@ -98,7 +98,7 @@ except ImportError:
     urlparse = None
     ipaddress = None
 
-# Playwright для JS-рендеринга (новое в v1.10.1)
+# Playwright for JS rendering (new in v1.10.1)
 try:
     from playwright.sync_api import sync_playwright
 except ImportError:
@@ -113,43 +113,43 @@ logger = logging.getLogger(__name__)
 
 
 class TextExtractor:
-    """Класс для извлечения текста из файлов различных форматов."""
+    """Class for extracting text from files of various formats."""
 
     def __init__(self):
-        """Инициализация экстрактора текста."""
+        """Initialize the text extractor."""
         self.ocr_languages = settings.OCR_LANGUAGES
         self.timeout = settings.PROCESSING_TIMEOUT_SECONDS
-        # Создаем пул потоков для CPU-bound операций
+        # Create thread pool for CPU-bound operations
         self._thread_pool = concurrent.futures.ThreadPoolExecutor(max_workers=4)
 
     def extract_text(self, file_content: bytes, filename: str) -> List[Dict[str, Any]]:
-        """Основной метод извлечения текста (теперь синхронный для выполнения в threadpool)."""
-        # Проверка, является ли файл архивом
+        """Main text extraction method (synchronous for execution in threadpool)."""
+        # Check if file is an archive
         if is_archive_format(filename, settings.SUPPORTED_FORMATS):
             return self._extract_from_archive(file_content, filename)
 
-        # Проверка поддержки формата
+        # Check format support
         if not is_supported_format(filename, settings.SUPPORTED_FORMATS):
             raise ValueError(f"Unsupported file format: {filename}")
 
-        # Проверка MIME-типа для безопасности (синхронная операция)
+        # Check MIME type for security (synchronous operation)
         is_valid_mime = self._check_mime_type(file_content, filename)
 
         if not is_valid_mime:
-            logger.warning(f"MIME-тип файла {filename} не соответствует расширению")
-            # Не блокируем, но предупреждаем
+            logger.warning(f"File {filename} MIME type does not match its extension")
+            # Don't block, but warn
 
         extension = get_file_extension(filename)
 
-        # Проверка, что extension не None
+        # Check extension is not None
         if not extension:
             raise ValueError(f"Could not determine file extension for: {filename}")
 
         try:
-            # Извлечение текста синхронно
+            # Extract text synchronously
             text = self._extract_text_by_format(file_content, extension, filename)
 
-            # Возвращаем массив с одним элементом для единообразия
+            # Return array with one element for consistency
             return [
                 {
                     "filename": filename,
@@ -161,27 +161,27 @@ class TextExtractor:
             ]
 
         except Exception as e:
-            logger.error(f"Ошибка при извлечении текста из {filename}: {str(e)}")
+            logger.error(f"Error extracting text from {filename}: {str(e)}")
             raise ValueError(f"Error extracting text: {str(e)}")
 
     def _extract_text_by_format(
         self, content: bytes, extension: str, filename: str
     ) -> str:
-        """Извлечение текста в зависимости от формата (синхронная версия)."""
-        # Создаем словарь сопоставления расширений с методами извлечения
+        """Extract text depending on format (synchronous version)."""
+        # Create dictionary mapping extensions to extraction methods
         extraction_methods = self._get_extraction_methods_mapping()
 
-        # Проверяем, является ли файл исходным кодом
+        # Check if file is source code
         source_code_extensions = settings.SUPPORTED_FORMATS.get("source_code", [])
         if extension in source_code_extensions:
             return self._extract_from_source_code_sync(content, extension, filename)
 
-        # Ищем подходящий метод извлечения
+        # Look for suitable extraction method
         extractor_method = extraction_methods.get(extension)
         if extractor_method:
             return extractor_method(content)
 
-        # Проверяем группы расширений
+        # Check extension groups
         for extensions_group, method in self._get_group_extraction_methods():
             if extension in extensions_group:
                 return method(content)
@@ -189,7 +189,7 @@ class TextExtractor:
         raise ValueError(f"Unsupported file format: {extension}")
 
     def _get_extraction_methods_mapping(self) -> dict:
-        """Получение словаря сопоставления расширений с методами извлечения."""
+        """Get dictionary mapping extensions to extraction methods."""
         return {
             "pdf": self._extract_from_pdf_sync,
             "docx": self._extract_from_docx_sync,
@@ -208,7 +208,7 @@ class TextExtractor:
         }
 
     def _get_group_extraction_methods(self) -> list:
-        """Получение списка групп расширений с соответствующими методами."""
+        """Get list of extension groups with corresponding methods."""
         return [
             (["xls", "xlsx"], self._extract_from_excel_sync),
             (
@@ -221,9 +221,9 @@ class TextExtractor:
         ]
 
     def _extract_from_pdf_sync(self, content: bytes) -> str:
-        """Синхронное извлечение текста из PDF."""
+        """Synchronous text extraction from PDF."""
         if not pdfplumber:
-            raise ImportError("pdfplumber не установлен")
+            raise ImportError("pdfplumber is not installed")
 
         text_parts = []
         temp_file_path = None
@@ -241,60 +241,60 @@ class TextExtractor:
             return "\n\n".join(text_parts)
 
         except Exception as e:
-            logger.error(f"Ошибка при обработке PDF: {str(e)}")
+            logger.error(f"Error processing PDF: {str(e)}")
             raise ValueError(f"Error processing PDF: {str(e)}")
         finally:
             self._cleanup_temp_file(temp_file_path)
 
     def _extract_pdf_page_content(self, page, page_num: int) -> list:
-        """Извлечение содержимого страницы PDF."""
+        """Extract PDF page content."""
         page_texts = []
 
-        # Извлечение текста со страницы
+        # Extract text from page
         page_text = page.extract_text()
         if page_text:
-            page_texts.append(f"[Страница {page_num}]\n{page_text}")
+            page_texts.append(f"[Page {page_num}]\n{page_text}")
 
-        # Извлечение изображений и OCR
+        # Extract images and OCR
         if page.images:
             page_texts.extend(self._extract_pdf_page_images(page))
 
         return page_texts
 
     def _extract_pdf_page_images(self, page) -> list:
-        """Извлечение текста из изображений на странице PDF."""
+        """Extract text from images on PDF page."""
         image_texts = []
 
         for img_idx, img in enumerate(page.images):
             try:
                 image_text = self._ocr_from_pdf_image_sync(page, img)
                 if image_text.strip():
-                    image_texts.append(f"[Изображение {img_idx + 1}]\n{image_text}")
+                    image_texts.append(f"[Image {img_idx + 1}]\n{image_text}")
             except Exception as e:
-                logger.warning(f"Ошибка OCR изображения {img_idx + 1}: {str(e)}")
+                logger.warning(f"OCR error on image {img_idx + 1}: {str(e)}")
 
         return image_texts
 
     def _cleanup_temp_file(self, temp_file_path: str) -> None:
-        """Безопасное удаление временного файла."""
+        """Safely remove temporary file."""
         if temp_file_path and os.path.exists(temp_file_path):
             try:
                 os.unlink(temp_file_path)
             except OSError as e:
                 logger.warning(
-                    f"Не удалось удалить временный файл {temp_file_path}: {str(e)}"
+                    f"Failed to remove temporary file {temp_file_path}: {str(e)}"
                 )
 
     def _extract_from_docx_sync(self, content: bytes) -> str:
-        """Синхронное извлечение текста из DOCX с полным извлечением согласно п.3.3 ТЗ."""
+        """Synchronous text extraction from DOCX with full extraction according to project specs."""
         if not Document:
-            raise ImportError("python-docx не установлен")
+            raise ImportError("python-docx is not installed")
 
         try:
             doc = Document(io.BytesIO(content))
             text_parts = []
 
-            # Извлекаем различные части документа
+            # Extract various parts of the document
             text_parts.extend(self._extract_docx_paragraphs(doc))
             text_parts.extend(self._extract_docx_tables(doc))
             text_parts.extend(self._extract_docx_headers_footers(doc))
@@ -304,11 +304,11 @@ class TextExtractor:
             return "\n\n".join(text_parts)
 
         except Exception as e:
-            logger.error(f"Ошибка при обработке DOCX: {str(e)}")
+            logger.error(f"Error processing DOCX: {str(e)}")
             raise ValueError(f"Error processing DOCX: {str(e)}")
 
     def _extract_docx_paragraphs(self, doc) -> list:
-        """Извлечение основного текста из параграфов DOCX."""
+        """Extract main text from DOCX paragraphs."""
         text_parts = []
         for paragraph in doc.paragraphs:
             if paragraph.text.strip():
@@ -316,7 +316,7 @@ class TextExtractor:
         return text_parts
 
     def _extract_docx_tables(self, doc) -> list:
-        """Извлечение текста из таблиц DOCX."""
+        """Extract text from DOCX tables."""
         text_parts = []
         for table in doc.tables:
             table_text = []
@@ -331,26 +331,26 @@ class TextExtractor:
         return text_parts
 
     def _extract_docx_headers_footers(self, doc) -> list:
-        """Извлечение текста из колонтитулов DOCX."""
+        """Extract text from DOCX headers and footers."""
         text_parts = []
         for section in doc.sections:
-            # Извлечение заголовка
+            # Extract header
             if section.header:
                 header_text = self._extract_section_text(section.header.paragraphs)
                 if header_text:
                     text_parts.append(
-                        f"[Колонтитул - Заголовок]\n{' '.join(header_text)}"
+                        f"[Header]\n{' '.join(header_text)}"
                     )
 
-            # Извлечение подвала
+            # Extract footer
             if section.footer:
                 footer_text = self._extract_section_text(section.footer.paragraphs)
                 if footer_text:
-                    text_parts.append(f"[Колонтитул - Подвал]\n{' '.join(footer_text)}")
+                    text_parts.append(f"[Footer]\n{' '.join(footer_text)}")
         return text_parts
 
     def _extract_section_text(self, paragraphs) -> list:
-        """Извлечение текста из параграфов секции."""
+        """Extract text from section paragraphs."""
         text_parts = []
         for paragraph in paragraphs:
             if paragraph.text.strip():
@@ -358,7 +358,7 @@ class TextExtractor:
         return text_parts
 
     def _extract_docx_footnotes(self, doc) -> list:
-        """Извлечение сносок из DOCX."""
+        """Extract footnotes from DOCX."""
         text_parts = []
         try:
             if hasattr(doc, "footnotes") and doc.footnotes:
@@ -368,13 +368,13 @@ class TextExtractor:
                         footnote_text = self._extract_section_text(footnote.paragraphs)
                         footnotes_text.extend(footnote_text)
                 if footnotes_text:
-                    text_parts.append(f"[Сноски]\n{' '.join(footnotes_text)}")
+                    text_parts.append(f"[Footnotes]\n{' '.join(footnotes_text)}")
         except Exception as e:
-            logger.debug(f"Не удалось извлечь сноски из DOCX: {str(e)}")
+            logger.debug(f"Failed to extract footnotes from DOCX: {str(e)}")
         return text_parts
 
     def _extract_docx_comments(self, doc) -> list:
-        """Извлечение комментариев из DOCX."""
+        """Extract comments from DOCX."""
         text_parts = []
         try:
             if hasattr(doc, "comments") and doc.comments:
@@ -384,27 +384,27 @@ class TextExtractor:
                         comment_text = self._extract_section_text(comment.paragraphs)
                         comments_text.extend(comment_text)
                 if comments_text:
-                    text_parts.append(f"[Комментарии]\n{' '.join(comments_text)}")
+                    text_parts.append(f"[Comments]\n{' '.join(comments_text)}")
         except Exception as e:
-            logger.debug(f"Не удалось извлечь комментарии из DOCX: {str(e)}")
+            logger.debug(f"Failed to extract comments from DOCX: {str(e)}")
         return text_parts
 
     def _extract_from_doc_sync(self, content: bytes) -> str:
-        """Синхронное извлечение текста из DOC через конвертацию в DOCX с помощью LibreOffice."""
+        """Synchronous text extraction from DOC via conversion to DOCX using LibreOffice."""
         if not Document:
-            raise ImportError("python-docx не установлен")
+            raise ImportError("python-docx is not installed")
 
         try:
-            # Создаем временные файлы
+            # Create temporary files
             with tempfile.NamedTemporaryFile(suffix=".doc", delete=False) as temp_doc:
                 temp_doc.write(content)
                 temp_doc_path = temp_doc.name
 
-            # Создаем временную директорию для вывода
+            # Create temporary output directory
             temp_dir = tempfile.mkdtemp()
 
             try:
-                # Конвертируем .doc в .docx с помощью LibreOffice с ограничениями ресурсов
+                # Convert .doc to .docx using LibreOffice with resource limits
                 from .config import settings
                 from .utils import run_subprocess_with_limits
 
@@ -428,29 +428,29 @@ class TextExtractor:
                     logger.error(f"LibreOffice conversion failed: {result.stderr}")
                     raise ValueError("Failed to convert DOC to DOCX")
 
-                # Находим сконвертированный файл
+                # Find converted file
                 doc_filename = os.path.splitext(os.path.basename(temp_doc_path))[0]
                 docx_path = os.path.join(temp_dir, f"{doc_filename}.docx")
 
                 if not os.path.exists(docx_path):
                     raise ValueError("Converted DOCX file not found")
 
-                # Читаем сконвертированный DOCX файл
+                # Read converted DOCX file
                 with open(docx_path, "rb") as docx_file:
                     docx_content = docx_file.read()
 
-                # Используем синхронный метод для извлечения текста из DOCX
+                # Use synchronous method to extract text from DOCX
                 text = self._extract_from_docx_sync(docx_content)
 
                 return text
 
             finally:
-                # Очищаем временные файлы
+                # Clean up temporary files
                 try:
                     os.unlink(temp_doc_path)
                 except Exception as e:
                     logger.warning(
-                        f"Не удалось удалить временный файл {temp_doc_path}: {e}"
+                        f"Failed to remove temporary file {temp_doc_path}: {e}"
                     )
 
                 try:
@@ -459,55 +459,55 @@ class TextExtractor:
                     shutil.rmtree(temp_dir, ignore_errors=True)
                 except Exception as e:
                     logger.warning(
-                        f"Не удалось удалить временную директорию {temp_dir}: {e}"
+                        f"Failed to remove temporary directory {temp_dir}: {e}"
                     )
 
         except subprocess.TimeoutExpired:
             logger.error("LibreOffice conversion timeout")
             raise ValueError("DOC conversion timeout")
         except MemoryError as e:
-            logger.error(f"LibreOffice превысил лимит памяти: {str(e)}")
+            logger.error(f"LibreOffice exceeded memory limit: {str(e)}")
             raise ValueError("DOC conversion failed: memory limit exceeded")
         except Exception as e:
-            logger.error(f"Ошибка при обработке DOC: {str(e)}")
+            logger.error(f"Error processing DOC: {str(e)}")
             raise ValueError(f"Error processing DOC: {str(e)}")
 
     def _extract_from_excel_sync(self, content: bytes) -> str:
-        """Синхронное извлечение данных из Excel файлов."""
+        """Synchronous data extraction from Excel files."""
         if not pd:
-            raise ImportError("pandas не установлен")
+            raise ImportError("pandas is not installed")
 
         try:
             excel_data = pd.read_excel(io.BytesIO(content), sheet_name=None)
             text_parts = []
 
             for sheet_name, df in excel_data.items():
-                text_parts.append(f"[Лист: {sheet_name}]")
+                text_parts.append(f"[Sheet: {sheet_name}]")
                 text_parts.append(df.to_csv(index=False))
 
             return "\n\n".join(text_parts)
 
         except Exception as e:
-            logger.error(f"Ошибка при обработке Excel: {str(e)}")
+            logger.error(f"Error processing Excel: {str(e)}")
             raise ValueError(f"Error processing Excel: {str(e)}")
 
     def _extract_from_csv_sync(self, content: bytes) -> str:
-        """Синхронное извлечение данных из CSV файлов."""
+        """Synchronous data extraction from CSV files."""
         if not pd:
-            raise ImportError("pandas не установлен")
+            raise ImportError("pandas is not installed")
 
         try:
             df = pd.read_csv(io.BytesIO(content))
             return df.to_csv(index=False)
 
         except Exception as e:
-            logger.error(f"Ошибка при обработке CSV: {str(e)}")
+            logger.error(f"Error processing CSV: {str(e)}")
             raise ValueError(f"Error processing CSV: {str(e)}")
 
     def _extract_from_pptx_sync(self, content: bytes) -> str:
-        """Синхронное извлечение текста из PPTX с полным извлечением согласно п.3.3 ТЗ."""
+        """Synchronous text extraction from PPTX with full extraction according to project specs."""
         if not Presentation:
-            raise ImportError("python-pptx не установлен")
+            raise ImportError("python-pptx is not installed")
 
         try:
             prs = Presentation(io.BytesIO(content))
@@ -515,58 +515,58 @@ class TextExtractor:
 
             for slide_num, slide in enumerate(prs.slides, 1):
                 slide_text = []
-                slide_text.append(f"[Слайд {slide_num}]")
+                slide_text.append(f"[Slide {slide_num}]")
 
-                # Извлечение текста из фигур слайда
+                # Extract text from slide shapes
                 for shape in slide.shapes:
                     if hasattr(shape, "text") and shape.text.strip():
                         slide_text.append(shape.text)
 
-                # Извлечение заметок спикера - согласно п.3.3 ТЗ
+                # Extract speaker notes - according to project specs
                 try:
                     if hasattr(slide, "notes_slide") and slide.notes_slide:
                         notes_text = []
-                        # Извлечение заметок из текстовых фигур
+                        # Extract notes from text shapes
                         for shape in slide.notes_slide.shapes:
                             if hasattr(shape, "text") and shape.text.strip():
-                                # Фильтруем стандартные заголовки PowerPoint
+                                # Filter standard PowerPoint headers
                                 if shape.text.strip() not in ["Заметки", "Notes"]:
                                     notes_text.append(shape.text.strip())
 
                         if notes_text:
                             slide_text.append(
-                                f"[Заметки спикера]\n{' '.join(notes_text)}"
+                                f"[Speaker Notes]\n{' '.join(notes_text)}"
                             )
                 except Exception as e:
                     logger.debug(
-                        f"Не удалось извлечь заметки спикера со слайда {slide_num}: {str(e)}"
+                        f"Failed to extract speaker notes from slide {slide_num}: {str(e)}"
                     )
 
-                if len(slide_text) > 1:  # Больше чем просто заголовок слайда
+                if len(slide_text) > 1:  # More than just slide title
                     text_parts.append("\n".join(slide_text))
 
             return "\n\n".join(text_parts)
 
         except Exception as e:
-            logger.error(f"Ошибка при обработке PPTX: {str(e)}")
+            logger.error(f"Error processing PPTX: {str(e)}")
             raise ValueError(f"Error processing PPTX: {str(e)}")
 
     def _extract_from_ppt_sync(self, content: bytes) -> str:
-        """Синхронное извлечение текста из PPT через конвертацию в PPTX с помощью LibreOffice."""
+        """Synchronous text extraction from PPT via conversion to PPTX using LibreOffice."""
         if not Presentation:
-            raise ImportError("python-pptx не установлен")
+            raise ImportError("python-pptx is not installed")
 
         try:
-            # Создаем временные файлы
+            # Create temporary files
             with tempfile.NamedTemporaryFile(suffix=".ppt", delete=False) as temp_ppt:
                 temp_ppt.write(content)
                 temp_ppt_path = temp_ppt.name
 
-            # Создаем временную директорию для вывода
+            # Create temporary output directory
             temp_dir = tempfile.mkdtemp()
 
             try:
-                # Конвертируем .ppt в .pptx с помощью LibreOffice с ограничениями ресурсов
+                # Convert .ppt to .pptx using LibreOffice with resource limits
                 from .config import settings
                 from .utils import run_subprocess_with_limits
 
@@ -590,29 +590,29 @@ class TextExtractor:
                     logger.error(f"LibreOffice conversion failed: {result.stderr}")
                     raise ValueError("Failed to convert PPT to PPTX")
 
-                # Находим сконвертированный файл
+                # Find converted file
                 ppt_filename = os.path.splitext(os.path.basename(temp_ppt_path))[0]
                 pptx_path = os.path.join(temp_dir, f"{ppt_filename}.pptx")
 
                 if not os.path.exists(pptx_path):
                     raise ValueError("Converted PPTX file not found")
 
-                # Читаем сконвертированный PPTX файл
+                # Read converted PPTX file
                 with open(pptx_path, "rb") as pptx_file:
                     pptx_content = pptx_file.read()
 
-                # Используем синхронный метод для извлечения текста из PPTX
+                # Use synchronous method to extract text from PPTX
                 text = self._extract_from_pptx_sync(pptx_content)
 
                 return text
 
             finally:
-                # Очищаем временные файлы
+                # Clean up temporary files
                 try:
                     os.unlink(temp_ppt_path)
                 except Exception as e:
                     logger.warning(
-                        f"Не удалось удалить временный файл {temp_ppt_path}: {e}"
+                        f"Failed to remove temporary file {temp_ppt_path}: {e}"
                     )
 
                 try:
@@ -621,29 +621,29 @@ class TextExtractor:
                     shutil.rmtree(temp_dir, ignore_errors=True)
                 except Exception as e:
                     logger.warning(
-                        f"Не удалось удалить временную директорию {temp_dir}: {e}"
+                        f"Failed to remove temporary directory {temp_dir}: {e}"
                     )
 
         except subprocess.TimeoutExpired:
             logger.error("LibreOffice conversion timeout")
             raise ValueError("PPT conversion timeout")
         except MemoryError as e:
-            logger.error(f"LibreOffice превысил лимит памяти: {str(e)}")
+            logger.error(f"LibreOffice exceeded memory limit: {str(e)}")
             raise ValueError("PPT conversion failed: memory limit exceeded")
         except Exception as e:
-            logger.error(f"Ошибка при обработке PPT: {str(e)}")
+            logger.error(f"Error processing PPT: {str(e)}")
             raise ValueError(f"Error processing PPT: {str(e)}")
 
     def _extract_from_txt_sync(self, content: bytes) -> str:
-        """Синхронное извлечение текста из TXT файлов."""
+        """Synchronous text extraction from TXT files."""
         try:
             return self._decode_text_content(content)
         except Exception as e:
-            logger.error(f"Ошибка при обработке TXT: {str(e)}")
+            logger.error(f"Error processing TXT: {str(e)}")
             raise ValueError(f"Error processing TXT: {str(e)}")
 
     def _decode_text_content(self, content: bytes) -> str:
-        """Декодирование содержимого с автоопределением кодировки."""
+        """Decoding content with encoding auto-detection."""
         encodings = self._get_encoding_list()
 
         for encoding in encodings:
@@ -651,31 +651,31 @@ class TextExtractor:
             if decoded_text is not None:
                 return decoded_text
 
-        # Если не удалось декодировать ни одной кодировкой, используем замещение символов
+        # If no encoding worked, use character replacement
         logger.warning(
-            "Не удалось определить кодировку файла, используем UTF-8 с заменой символов"
+            "Could not determine file encoding, using UTF-8 with character replacement"
         )
         return content.decode("utf-8", errors="replace")
 
     def _get_encoding_list(self) -> list:
-        """Получение списка кодировок для проверки."""
+        """Get list of encodings to check."""
         return [
-            "utf-8",  # Стандартная UTF-8
-            "mac-cyrillic",  # Macintosh кодировка для кириллицы
-            "cp1251",  # Windows-1251 (основная кодировка Windows для русского)
-            "windows-1251",  # Альтернативное название для cp1251
-            "koi8-r",  # КОИ-8 (старая советская кодировка)
-            "cp866",  # DOS кодировка для русского
-            "iso-8859-5",  # ISO кодировка для кириллицы
-            "utf-16",  # UTF-16 (иногда используется в Windows)
+            "utf-8",  # Standard UTF-8
+            "mac-cyrillic",  # Macintosh encoding for Cyrillic
+            "cp1251",  # Windows-1251 (main Windows encoding for Russian)
+            "windows-1251",  # Alternative name for cp1251
+            "koi8-r",  # KOI8-R (old Soviet encoding)
+            "cp866",  # DOS encoding for Russian
+            "iso-8859-5",  # ISO encoding for Cyrillic
+            "utf-16",  # UTF-16 (sometimes used in Windows)
             "utf-16le",  # UTF-16 Little Endian
             "utf-16be",  # UTF-16 Big Endian
             "latin-1",  # ISO-8859-1 (fallback)
-            "ascii",  # ASCII (базовая кодировка)
+            "ascii",  # ASCII (basic encoding)
         ]
 
     def _try_decode_with_encoding(self, content: bytes, encoding: str) -> str:
-        """Попытка декодирования с проверкой качества."""
+        """Attempt to decode with quality check."""
         try:
             decoded_text = content.decode(encoding)
 
@@ -690,14 +690,14 @@ class TextExtractor:
             return None
 
     def _is_decoding_quality_good(self, text: str) -> bool:
-        """Проверка качества декодирования по количеству заменяющих символов."""
+        """Check decoding quality by replacement character count."""
         if "�" in text:
             replacement_ratio = text.count("�") / len(text)
-            return replacement_ratio <= 0.1  # Не больше 10% заменяющих символов
+            return replacement_ratio <= 0.1  # No more than 10% replacement characters
         return True
 
     def _is_mac_cyrillic_valid(self, text: str, encoding: str) -> bool:
-        """Дополнительная валидация для mac-cyrillic кодировки."""
+        """Additional validation for mac-cyrillic encoding."""
         if encoding != "mac-cyrillic" or not text:
             return True
 
@@ -707,7 +707,7 @@ class TextExtractor:
         return self._has_valid_cyrillic_ratio(text)
 
     def _has_suspicious_start_chars(self, text: str) -> bool:
-        """Проверка на подозрительные символы в начале текста."""
+        """Check for suspicious characters at the start of text."""
         suspicious_chars = [
             '"',
             "'",
@@ -723,7 +723,7 @@ class TextExtractor:
         return len(text) > 1 and text[0] in suspicious_chars
 
     def _has_valid_cyrillic_ratio(self, text: str) -> bool:
-        """Проверка соотношения кириллицы и латиницы."""
+        """Check the ratio of Cyrillic to Latin characters."""
         cyrillic_count = sum(1 for char in text if "\u0400" <= char <= "\u04ff")
         latin_count = sum(1 for char in text if "a" <= char.lower() <= "z")
         total_letters = cyrillic_count + latin_count
@@ -731,39 +731,39 @@ class TextExtractor:
         if total_letters == 0:
             return True
 
-        # Если кириллица составляет менее 70% и она есть, то это подозрительно
+        # If Cyrillic is less than 70% and present, it's suspicious
         return not (cyrillic_count / total_letters < 0.7 and cyrillic_count > 0)
 
     def _extract_from_source_code_sync(
         self, content: bytes, extension: str, filename: str
     ) -> str:
-        """Синхронное извлечение текста из файлов исходного кода."""
+        """Synchronous text extraction from source code files."""
         try:
-            # Декодируем содержимое файла
+            # Decode file content
             text = self._decode_text_content(content)
 
-            # Получаем информацию о языке программирования и форматируем результат
+            # Get programming language info and format result
             return self._format_source_code_output(text, extension, filename)
 
         except Exception as e:
-            logger.error(f"Ошибка при обработке исходного кода {filename}: {str(e)}")
+            logger.error(f"Error processing source code {filename}: {str(e)}")
             raise ValueError(f"Error processing source code: {str(e)}")
 
     def _format_source_code_output(
         self, text: str, extension: str, filename: str
     ) -> str:
-        """Форматирование вывода для файлов исходного кода."""
+        """Formatting output for source code files."""
         language = self._get_programming_language(extension)
         header = self._create_source_code_header(language, filename, text)
         return header + "=" * 50 + "\n" + text
 
     def _get_programming_language(self, extension: str) -> str:
-        """Определение языка программирования по расширению файла."""
+        """Determining programming language by file extension."""
         language_map = self._get_language_map()
         return language_map.get(extension.lower(), "Source Code")
 
     def _get_language_map(self) -> dict:
-        """Получение словаря соответствия расширений языкам программирования."""
+        """Get dictionary mapping extensions to programming languages."""
         return {
             # Python
             "py": "Python",
@@ -889,72 +889,72 @@ class TextExtractor:
     def _create_source_code_header(
         self, language: str, filename: str, text: str
     ) -> str:
-        """Создание заголовка для файла исходного кода."""
+        """Creating a header for source code file."""
         header = f"=== {language} File: {filename} ===\n"
 
         lines = text.split("\n")
         line_count = len(lines)
         header += f"Lines: {line_count}\n"
 
-        # Если файл слишком длинный, добавляем предупреждение
+        # If file is too long, add a warning
         if line_count > 1000:
             header += f"Warning: Large file with {line_count} lines\n"
 
         return header
 
     def _extract_from_html_sync(self, content: bytes) -> str:
-        """Синхронное извлечение текста из HTML."""
+        """Synchronous text extraction from HTML."""
         if not BeautifulSoup:
-            raise ImportError("beautifulsoup4 не установлен")
+            raise ImportError("beautifulsoup4 is not installed")
 
         try:
             text = content.decode("utf-8", errors="replace")
             soup = BeautifulSoup(text, "html.parser")
 
-            # Удаление script и style тегов
+            # Remove script and style tags
             for script in soup(["script", "style"]):
                 script.decompose()
 
-            # Получение текста
+            # Get text
             text = soup.get_text()
 
-            # Очистка от лишних пробелов
+            # Clean up extra spaces
             lines = (line.strip() for line in text.splitlines())
             chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
             return "\n".join(chunk for chunk in chunks if chunk)
 
         except Exception as e:
-            logger.error(f"Ошибка при обработке HTML: {str(e)}")
+            logger.error(f"Error processing HTML: {str(e)}")
             raise ValueError(f"Error processing HTML: {str(e)}")
 
     def _extract_from_markdown_sync(self, content: bytes) -> str:
-        """Синхронное извлечение текста из Markdown."""
+        """Synchronous text extraction from Markdown."""
         try:
             text = content.decode("utf-8", errors="replace")
 
             if markdown:
-                # Конвертация в HTML и извлечение текста
+                # Convert to HTML and extract text
                 html = markdown.markdown(text)
                 if BeautifulSoup:
                     soup = BeautifulSoup(html, "html.parser")
                     return soup.get_text()
 
-            # Если markdown не установлен, возвращаем как есть
+            # If markdown is not installed, return as is
             return text
 
         except Exception as e:
-            logger.error(f"Ошибка при обработке Markdown: {str(e)}")
+            logger.error(f"Error processing Markdown: {str(e)}")
             raise ValueError(f"Error processing Markdown: {str(e)}")
 
     def _extract_from_json_sync(self, content: bytes) -> str:
-        """Синхронное извлечение текста из JSON."""
+        """Synchronous text extraction from JSON."""
         import json
 
         try:
             text = content.decode("utf-8", errors="replace")
             data = json.loads(text)
 
-            # Рекурсивное извлечение всех строковых значений
+            # Recursive extraction of all string values
             def extract_strings(obj, path=""):
                 strings = []
                 if isinstance(obj, dict):
@@ -974,13 +974,13 @@ class TextExtractor:
             return "\n".join(strings)
 
         except Exception as e:
-            logger.error(f"Ошибка при обработке JSON: {str(e)}")
+            logger.error(f"Error processing JSON: {str(e)}")
             raise ValueError(f"Error processing JSON: {str(e)}")
 
     def _extract_from_rtf_sync(self, content: bytes) -> str:
-        """Синхронное извлечение текста из RTF."""
+        """Synchronous text extraction from RTF."""
         if not rtf_to_text:
-            raise ImportError("striprtf не установлен")
+            raise ImportError("striprtf is not installed")
 
         try:
             text = content.decode("utf-8", errors="replace")
@@ -988,31 +988,31 @@ class TextExtractor:
             return plain_text
 
         except Exception as e:
-            logger.error(f"Ошибка при обработке RTF: {str(e)}")
+            logger.error(f"Error processing RTF: {str(e)}")
             raise ValueError(f"Error processing RTF: {str(e)}")
 
     def _extract_from_xml_sync(self, content: bytes) -> str:
-        """Синхронное извлечение текста из XML."""
+        """Synchronous text extraction from XML."""
         try:
             text = content.decode("utf-8", errors="replace")
             root = ET.fromstring(text)
 
-            # Рекурсивное извлечение всех элементов и атрибутов
+            # Recursive extraction of all elements and attributes
             def extract_from_element(elem, path=""):
                 strings = []
 
                 current_path = f"{path}.{elem.tag}" if path else elem.tag
 
-                # Добавляем текст элемента
+                # Add element text
                 if elem.text and elem.text.strip():
                     strings.append(f"{current_path}: {elem.text.strip()}")
 
-                # Добавляем атрибуты
+                # Add attributes
                 for attr_name, attr_value in elem.attrib.items():
                     if attr_value.strip():
                         strings.append(f"{current_path}@{attr_name}: {attr_value}")
 
-                # Рекурсивно обрабатываем дочерние элементы
+                # Recursively process child elements
                 for child in elem:
                     strings.extend(extract_from_element(child, current_path))
 
@@ -1022,13 +1022,13 @@ class TextExtractor:
             return "\n".join(strings)
 
         except Exception as e:
-            logger.error(f"Ошибка при обработке XML: {str(e)}")
+            logger.error(f"Error processing XML: {str(e)}")
             raise ValueError(f"Error processing XML: {str(e)}")
 
     def _extract_from_yaml_sync(self, content: bytes) -> str:
-        """Синхронное извлечение текста из YAML."""
+        """Synchronous text extraction from YAML."""
         if not yaml:
-            raise ImportError("PyYAML не установлен")
+            raise ImportError("PyYAML is not installed")
 
         try:
             text = content.decode("utf-8", errors="replace")
@@ -1037,11 +1037,11 @@ class TextExtractor:
             return "\n".join(strings)
 
         except Exception as e:
-            logger.error(f"Ошибка при обработке YAML: {str(e)}")
+            logger.error(f"Error processing YAML: {str(e)}")
             raise ValueError(f"Error processing YAML: {str(e)}")
 
     def _extract_yaml_strings(self, obj, path="") -> list:
-        """Рекурсивное извлечение всех строковых значений из YAML."""
+        """Recursive extraction of all string values from YAML."""
         strings = []
 
         if isinstance(obj, dict):
@@ -1054,7 +1054,7 @@ class TextExtractor:
         return strings
 
     def _extract_yaml_dict_strings(self, obj_dict: dict, path: str) -> list:
-        """Извлечение строк из словаря YAML."""
+        """Extract strings from YAML dictionary."""
         strings = []
         for key, value in obj_dict.items():
             new_path = f"{path}.{key}" if path else key
@@ -1062,7 +1062,7 @@ class TextExtractor:
         return strings
 
     def _extract_yaml_list_strings(self, obj_list: list, path: str) -> list:
-        """Извлечение строк из списка YAML."""
+        """Extract strings from YAML list."""
         strings = []
         for i, value in enumerate(obj_list):
             new_path = f"{path}[{i}]" if path else f"[{i}]"
@@ -1070,9 +1070,9 @@ class TextExtractor:
         return strings
 
     def _extract_from_odt_sync(self, content: bytes) -> str:
-        """Синхронное извлечение текста из ODT."""
+        """Synchronous text extraction from ODT."""
         if not load:
-            raise ImportError("odfpy не установлен")
+            raise ImportError("odfpy is not installed")
 
         temp_file_path = None
         try:
@@ -1083,7 +1083,7 @@ class TextExtractor:
             doc = load(temp_file_path)
             text_parts = []
 
-            # Извлечение всех текстовых элементов
+            # Extract all text elements
             for p in doc.getElementsByType(P):
                 text = extractText(p)
                 if text.strip():
@@ -1092,22 +1092,22 @@ class TextExtractor:
             return "\n".join(text_parts)
 
         except Exception as e:
-            logger.error(f"Ошибка при обработке ODT: {str(e)}")
+            logger.error(f"Error processing ODT: {str(e)}")
             raise ValueError(f"Error processing ODT: {str(e)}")
         finally:
-            # Гарантированное удаление временного файла
+            # Guaranteed removal of temporary file
             if temp_file_path and os.path.exists(temp_file_path):
                 try:
                     os.unlink(temp_file_path)
                 except OSError as e:
                     logger.warning(
-                        f"Не удалось удалить временный файл {temp_file_path}: {str(e)}"
+                        f"Failed to remove temporary file {temp_file_path}: {str(e)}"
                     )
 
     def _extract_from_epub_sync(self, content: bytes) -> str:
-        """Синхронное извлечение текста из EPUB."""
+        """Synchronous text extraction from EPUB."""
         if not BeautifulSoup:
-            raise ImportError("beautifulsoup4 не установлен")
+            raise ImportError("beautifulsoup4 is not installed")
 
         try:
             text_parts = []
@@ -1131,43 +1131,43 @@ class TextExtractor:
             return "\n\n".join(text_parts)
 
         except Exception as e:
-            logger.error(f"Ошибка при обработке EPUB: {str(e)}")
+            logger.error(f"Error processing EPUB: {str(e)}")
             raise ValueError(f"Error processing EPUB: {str(e)}")
 
     def _should_stop_epub_extraction(self, current_size: int, file_size: int) -> bool:
-        """Проверка лимита размера для EPUB."""
+        """Check size limit for EPUB."""
         if current_size + file_size > settings.MAX_EXTRACTED_SIZE:
-            logger.warning("Достигнут лимит размера распакованного содержимого EPUB")
+            logger.warning("EPUB uncompressed content size limit reached")
             return True
         return False
 
     def _is_epub_html_file(self, filename: str) -> bool:
-        """Проверка является ли файл HTML для EPUB."""
+        """Check if file is HTML for EPUB."""
         return filename.endswith((".html", ".xhtml", ".htm"))
 
     def _extract_epub_html_text(self, zip_ref, file_info) -> tuple:
-        """Извлечение текста из HTML файла EPUB."""
+        """Extract text from EPUB HTML file."""
         try:
             html_content = zip_ref.read(file_info.filename)
             html_text = html_content.decode("utf-8", errors="replace")
 
-            # Парсинг HTML
+            # HTML parsing
             soup = BeautifulSoup(html_text, "html.parser")
 
-            # Удаление script и style тегов
+            # Remove script and style tags
             for script in soup(["script", "style"]):
                 script.decompose()
 
-            # Извлечение текста
+            # Extract text
             text = soup.get_text()
             return text.strip() if text.strip() else None, file_info.file_size
 
         except Exception as e:
-            logger.warning(f"Ошибка при обработке файла {file_info.filename}: {e}")
+            logger.warning(f"Error processing file {file_info.filename}: {e}")
             return None, 0
 
     def _extract_from_eml_sync(self, content: bytes) -> str:
-        """Синхронное извлечение текста из EML."""
+        """Synchronous text extraction from EML."""
         import email
 
         try:
@@ -1175,11 +1175,11 @@ class TextExtractor:
             msg = email.message_from_string(msg_text)
             text_parts = []
 
-            # Извлечение заголовков
+            # Extract headers
             text_parts.extend(self._extract_eml_headers(msg))
             text_parts.append("---")
 
-            # Извлечение тела письма
+            # Extract email body
             if msg.is_multipart():
                 text_parts.extend(self._extract_eml_body_multipart(msg))
             else:
@@ -1188,15 +1188,15 @@ class TextExtractor:
             return (
                 "\n".join(text_parts)
                 if text_parts
-                else "Не удалось извлечь читаемый текст из EML файла"
+                else "Could not extract readable text from EML file"
             )
 
         except Exception as e:
-            logger.error(f"Ошибка при обработке EML: {str(e)}")
+            logger.error(f"Error processing EML: {str(e)}")
             raise ValueError(f"Error processing EML: {str(e)}")
 
     def _decode_eml_content(self, content: bytes) -> str:
-        """Декодирование содержимого EML файла."""
+        """Decoding EML file content."""
         for encoding in ["utf-8", "cp1251", "latin-1"]:
             try:
                 return content.decode(encoding)
@@ -1205,7 +1205,7 @@ class TextExtractor:
         return content.decode("utf-8", errors="replace")
 
     def _extract_eml_headers(self, msg) -> list:
-        """Извлечение заголовков из EML."""
+        """Extract headers from EML."""
         from email.header import decode_header
 
         text_parts = []
@@ -1220,7 +1220,7 @@ class TextExtractor:
         return text_parts
 
     def _decode_eml_header(self, value: str, decode_header_func) -> str:
-        """Декодирование заголовка EML."""
+        """Decoding EML header."""
         decoded_parts = decode_header_func(value)
         decoded_value = ""
 
@@ -1236,7 +1236,7 @@ class TextExtractor:
         return decoded_value
 
     def _extract_eml_body_multipart(self, msg) -> list:
-        """Извлечение тела многочастного EML письма."""
+        """Extract body of multipart EML message."""
         text_parts = []
 
         for part in msg.walk():
@@ -1247,12 +1247,12 @@ class TextExtractor:
                     if body_text and body_text.strip():
                         text_parts.append(body_text)
                 except Exception as e:
-                    logger.warning(f"Ошибка при обработке части письма: {e}")
+                    logger.warning(f"Error processing message part: {e}")
 
         return text_parts
 
     def _extract_eml_body_simple(self, msg) -> list:
-        """Извлечение тела простого EML письма."""
+        """Extract body of simple EML message."""
         text_parts = []
 
         try:
@@ -1263,12 +1263,12 @@ class TextExtractor:
                 if body_text.strip():
                     text_parts.append(body_text)
         except Exception as e:
-            logger.warning(f"Ошибка при обработке тела письма: {e}")
+            logger.warning(f"Error processing message body: {e}")
 
         return text_parts
 
     def _extract_eml_part_text(self, part, content_type: str) -> str:
-        """Извлечение текста из части EML."""
+        """Extract text from EML part."""
         payload = part.get_payload(decode=True)
         if not payload:
             return ""
@@ -1276,7 +1276,7 @@ class TextExtractor:
         charset = part.get_content_charset() or "utf-8"
         body_text = self._decode_payload(payload, charset)
 
-        # Обработка HTML
+        # HTML processing
         if content_type == "text/html" and BeautifulSoup:
             soup = BeautifulSoup(body_text, "html.parser")
             body_text = soup.get_text()
@@ -1284,35 +1284,35 @@ class TextExtractor:
         return body_text
 
     def _decode_payload(self, payload: bytes, charset: str) -> str:
-        """Декодирование payload с обработкой ошибок."""
+        """Decoding payload with error handling."""
         try:
             return payload.decode(charset)
         except UnicodeDecodeError:
             return payload.decode("utf-8", errors="replace")
 
     def _extract_from_msg_sync(self, content: bytes) -> str:
-        """Синхронное извлечение текста из MSG."""
+        """Synchronous text extraction from MSG."""
         try:
             text_parts = []
 
-            # Извлечение UTF-16 текста
+            # Extract UTF-16 text
             text_parts.extend(self._extract_utf16_text_from_msg(content))
 
-            # Альтернативный подход - поиск ASCII текста
+            # Alternative approach - searching for ASCII text
             text_parts.extend(self._extract_ascii_text_from_msg(content, text_parts))
 
             return (
                 "\n".join(text_parts)
                 if text_parts
-                else "Не удалось извлечь читаемый текст из MSG файла"
+                else "Could not extract readable text from MSG file"
             )
 
         except Exception as e:
-            logger.error(f"Ошибка при обработке MSG: {str(e)}")
+            logger.error(f"Error processing MSG: {str(e)}")
             raise ValueError(f"Error processing MSG: {str(e)}")
 
     def _extract_utf16_text_from_msg(self, content: bytes) -> list:
-        """Извлечение UTF-16 текста из MSG файла."""
+        """Extract UTF-16 text from MSG file."""
         text_parts = []
         try:
             text = content.decode("utf-16le", errors="ignore")
@@ -1321,27 +1321,27 @@ class TextExtractor:
             unique_lines = self._filter_unique_lines(clean_lines, min_length=5)
             text_parts.extend(unique_lines)
         except Exception as e:
-            logger.warning(f"Ошибка при декодировании UTF-16: {e}")
+            logger.warning(f"Error decoding UTF-16: {e}")
         return text_parts
 
     def _clean_msg_lines(self, lines: list) -> list:
-        """Очистка строк MSG от управляющих символов."""
+        """Cleaning MSG lines from control characters."""
         clean_lines = []
         for line in lines:
-            # Убираем нулевые байты и управляющие символы
+            # Remove null bytes and control characters
             clean_line = "".join(
                 char for char in line if ord(char) >= 32 or char in "\t\n\r"
             )
             clean_line = clean_line.strip()
 
-            # Пропускаем слишком короткие или бессмысленные строки
+            # Skip lines that are too short or meaningless
             if self._is_valid_msg_line(clean_line):
                 clean_lines.append(clean_line)
 
         return clean_lines
 
     def _is_valid_msg_line(self, line: str) -> bool:
-        """Проверка валидности строки MSG."""
+        """Checking MSG line validity."""
         return (
             len(line) > 3
             and not line.startswith(("_", "\x00"))
@@ -1349,7 +1349,7 @@ class TextExtractor:
         )
 
     def _filter_unique_lines(self, lines: list, min_length: int = 5) -> list:
-        """Фильтрация уникальных строк с минимальной длиной."""
+        """Filtering unique lines with a minimum length."""
         unique_lines = []
         seen = set()
         for line in lines:
@@ -1361,7 +1361,7 @@ class TextExtractor:
     def _extract_ascii_text_from_msg(
         self, content: bytes, existing_text_parts: list
     ) -> list:
-        """Извлечение ASCII текста из MSG файла."""
+        """Extract ASCII text from MSG file."""
         text_parts = []
         try:
             ascii_text = content.decode("ascii", errors="ignore")
@@ -1372,11 +1372,11 @@ class TextExtractor:
                 if self._is_valid_ascii_line(clean_line, existing_text_parts):
                     text_parts.append(clean_line)
         except Exception as e:
-            logger.warning(f"Ошибка при извлечении ASCII: {e}")
+            logger.warning(f"Error extracting ASCII: {e}")
         return text_parts
 
     def _is_valid_ascii_line(self, line: str, existing_parts: list) -> bool:
-        """Проверка валидности ASCII строки."""
+        """Checking ASCII line validity."""
         return (
             len(line) > 10
             and any(c.isalpha() for c in line)
@@ -1385,14 +1385,14 @@ class TextExtractor:
 
     def _safe_tesseract_ocr(self, image, temp_image_path: str = None) -> str:
         """
-        Безопасный вызов Tesseract с ограничениями ресурсов.
+        Safely call Tesseract with resource limits.
 
         Args:
-            image: PIL Image объект
-            temp_image_path: Путь к временному файлу (если None, создается автоматически)
+            image: PIL Image object
+            temp_image_path: Path to temporary file (if None, created automatically)
 
         Returns:
-            str: Распознанный текст
+            str: Recognized text
         """
         import os
         import tempfile
@@ -1403,7 +1403,7 @@ class TextExtractor:
         temp_file_created = False
 
         try:
-            # Если путь к временному файлу не указан, создаем его
+            # If temporary image path is not provided, create it
             if temp_image_path is None:
                 with tempfile.NamedTemporaryFile(
                     suffix=".png", delete=False
@@ -1411,20 +1411,20 @@ class TextExtractor:
                     temp_image_path = temp_file.name
                     temp_file_created = True
 
-                # Сохраняем изображение во временный файл
-                # Конвертируем в RGB для совместимости с PNG
+                # Save image to temporary file
+                # Convert to RGB for PNG compatibility
                 if image.mode in ("RGBA", "LA", "P"):
                     image = image.convert("RGB")
                 image.save(temp_image_path, "PNG")
 
-            # Создаем временный файл для вывода
+            # Create temporary output file
             with tempfile.NamedTemporaryFile(
                 suffix=".txt", delete=False
             ) as output_file:
                 output_path = output_file.name
 
             try:
-                # Вызываем tesseract через безопасную функцию
+                # Call Tesseract via safe function
                 result = run_subprocess_with_limits(
                     command=[
                         "tesseract",
@@ -1441,39 +1441,39 @@ class TextExtractor:
 
                 if result.returncode != 0:
                     logger.warning(
-                        f"Tesseract завершился с кодом {result.returncode}: {result.stderr}"
+                        f"Tesseract exited with code {result.returncode}: {result.stderr}"
                     )
                     return ""
 
-                # Читаем результат OCR
+                # Read OCR result
                 if os.path.exists(output_path):
                     with open(output_path, "r", encoding="utf-8") as f:
                         return f.read().strip()
                 else:
-                    logger.warning("Файл результата OCR не найден")
+                    logger.warning("OCR result file not found")
                     return ""
 
             finally:
-                # Удаляем временный файл вывода
+                # Remove temporary output file
                 try:
                     if os.path.exists(output_path):
                         os.unlink(output_path)
                 except Exception as e:
                     logger.warning(
-                        f"Не удалось удалить временный файл {output_path}: {e}"
+                        f"Failed to remove temporary file {output_path}: {e}"
                     )
 
         except subprocess.TimeoutExpired:
             logger.error("Tesseract OCR timeout")
             return ""
         except MemoryError as e:
-            logger.error(f"Tesseract превысил лимит памяти: {str(e)}")
+            logger.error(f"Tesseract exceeded memory limit: {str(e)}")
             return ""
         except Exception as e:
-            logger.error(f"Ошибка при OCR: {str(e)}")
+            logger.error(f"OCR error: {str(e)}")
             return ""
         finally:
-            # Удаляем временный файл изображения, если мы его создали
+            # Remove temporary image file if we created it
             if (
                 temp_file_created
                 and temp_image_path
@@ -1483,47 +1483,47 @@ class TextExtractor:
                     os.unlink(temp_image_path)
                 except Exception as e:
                     logger.warning(
-                        f"Не удалось удалить временный файл {temp_image_path}: {e}"
+                        f"Failed to remove temporary file {temp_image_path}: {e}"
                     )
 
     def _extract_from_image_sync(self, content: bytes) -> str:
-        """Синхронный OCR изображения."""
+        """Synchronous image OCR."""
         if not Image:
-            raise ImportError("PIL не установлен")
+            raise ImportError("PIL is not installed")
 
         image = None
         try:
-            # Валидация изображения для предотвращения DoS атак
+            # Image validation to prevent DoS attacks
             from .utils import validate_image_for_ocr
 
             is_valid, error_message = validate_image_for_ocr(content)
             if not is_valid:
-                logger.warning(f"Изображение не прошло валидацию: {error_message}")
+                logger.warning(f"Image validation failed: {error_message}")
                 raise ValueError(f"Image validation failed: {error_message}")
 
             image = Image.open(io.BytesIO(content))
 
-            # Безопасный OCR с ограничениями ресурсов
+            # Safe OCR with resource limits
             text = self._safe_tesseract_ocr(image)
             return text
 
         except Exception as e:
-            logger.error(f"Ошибка при OCR изображения: {str(e)}")
+            logger.error(f"Error during image OCR: {str(e)}")
             raise ValueError(f"Error processing image: {str(e)}")
         finally:
-            # КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: явно закрываем изображение для освобождения памяти
+            # CRITICAL FIX: explicitly close image to free memory
             if image:
                 try:
                     image.close()
                 except Exception as close_error:
-                    logger.warning(f"Ошибка при закрытии изображения: {str(close_error)}")
+                    logger.warning(f"Error closing image: {str(close_error)}")
 
     def _check_mime_type(self, content: bytes, filename: str) -> bool:
-        """Проверка MIME-типа файла для предотвращения подделки расширений."""
+        """Check file MIME type to prevent extension spoofing."""
         import mimetypes
 
         try:
-            # Определяем MIME-тип по содержимому (первые байты)
+            # Determine MIME type by content (magic bytes)
             mime_signatures = {
                 b"\x50\x4b\x03\x04": [
                     "application/zip",
@@ -1549,7 +1549,7 @@ class TextExtractor:
                 b"<?xml": ["text/xml", "application/xml"],
             }
 
-            # Проверяем сигнатуру файла
+            # Check file signature
             file_start = content[:10]
             detected_mime = None
 
@@ -1558,54 +1558,54 @@ class TextExtractor:
                     detected_mime = mime_types[0]
                     break
 
-            # Определяем ожидаемый MIME-тип по расширению
+            # Determine expected MIME type by extension
             expected_mime, _ = mimetypes.guess_type(filename)
 
-            # Если не можем определить MIME-тип, разрешаем
+            # If we cannot determine MIME type, allow it
             if not detected_mime or not expected_mime:
                 return True
 
-            # Проверяем соответствие
+            # Check consistency
             return detected_mime in mime_signatures.get(file_start[:4], [expected_mime])
 
         except Exception as e:
-            logger.warning(f"Ошибка при проверке MIME-типа: {str(e)}")
-            return True  # В случае ошибки разрешаем обработку
+            logger.warning(f"Error during MIME type check: {str(e)}")
+            return True  # Allow processing in case of error
 
     def _extract_from_archive(
         self, content: bytes, filename: str, nesting_level: int = 0
     ) -> List[Dict[str, Any]]:
-        """Безопасное извлечение файлов из архива."""
-        # Проверка глубины вложенности
+        """Safe extraction of files from archive."""
+        # Check nesting depth
         if nesting_level >= settings.MAX_ARCHIVE_NESTING:
             logger.warning(
-                f"Превышена максимальная глубина вложенности архивов: {filename}"
+                f"Maximum archive nesting depth exceeded: {filename}"
             )
             raise ValueError("Maximum archive nesting level exceeded")
 
-        # Проверка размера архива
+        # Check archive size
         if len(content) > settings.MAX_ARCHIVE_SIZE:
-            logger.warning(f"Архив {filename} слишком большой: {len(content)} байт")
+            logger.warning(f"Archive {filename} too large: {len(content)} bytes")
             raise ValueError("Archive size exceeds maximum allowed size")
 
         extension = get_file_extension(filename)
         logger.info(
-            f"Обработка архива {filename} (тип: {extension}, размер: {len(content)} байт)"
+            f"Processing archive {filename} (type: {extension}, size: {len(content)} bytes)"
         )
 
         extracted_files = []
 
-        # Создаем временную директорию для безопасной работы
+        # Create temporary directory for safe operation
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
             archive_path = temp_path / f"archive_{int(time.time())}.{extension}"
 
             try:
-                # Записываем архив во временный файл
+                # Write archive to temporary file
                 with open(archive_path, "wb") as f:
                     f.write(content)
 
-                # Извлекаем файлы в зависимости от типа архива
+                # Extract files depending on archive type
                 extract_dir = temp_path / "extracted"
                 extract_dir.mkdir(exist_ok=True)
 
@@ -1640,12 +1640,12 @@ class TextExtractor:
                     raise ValueError(f"Unsupported archive format: {extension}")
 
                 logger.info(
-                    f"Успешно обработано {len(extracted_files)} файлов из архива {filename}"
+                    f"Successfully processed {len(extracted_files)} files from archive {filename}"
                 )
                 return extracted_files
 
             except Exception as e:
-                logger.error(f"Ошибка при обработке архива {filename}: {str(e)}")
+                logger.error(f"Error processing archive {filename}: {str(e)}")
                 raise ValueError(f"Error processing archive: {str(e)}")
 
     def _extract_zip_files(
@@ -1655,7 +1655,7 @@ class TextExtractor:
         archive_name: str,
         nesting_level: int,
     ) -> List[Dict[str, Any]]:
-        """Извлечение файлов из ZIP-архива."""
+        """Extract files from ZIP archive."""
         try:
             with zipfile.ZipFile(archive_path, "r") as zip_ref:
                 self._validate_zip_size(zip_ref)
@@ -1666,7 +1666,7 @@ class TextExtractor:
             raise ValueError("Invalid ZIP file")
 
     def _validate_zip_size(self, zip_ref) -> None:
-        """Проверка размера файлов в ZIP-архиве для защиты от zip bomb."""
+        """Check file sizes in ZIP archive for zip bomb protection."""
         total_size = 0
         for info in zip_ref.infolist():
             if not info.is_dir():
@@ -1679,7 +1679,7 @@ class TextExtractor:
     def _process_zip_files(
         self, zip_ref, extract_dir: Path, archive_name: str, nesting_level: int
     ) -> List[Dict[str, Any]]:
-        """Обработка всех файлов в ZIP-архиве."""
+        """Process all files in ZIP archive."""
         extracted_files = []
 
         for info in zip_ref.infolist():
@@ -1697,26 +1697,26 @@ class TextExtractor:
     def _extract_single_zip_file(
         self, info, zip_ref, extract_dir: Path, archive_name: str, nesting_level: int
     ) -> List[Dict[str, Any]]:
-        """Извлечение и обработка одного файла из ZIP-архива."""
-        # Санитизируем имя файла
+        """Extract and process a single file from ZIP archive."""
+        # Sanitize filename
         safe_filename = self._sanitize_archive_filename(info.filename)
         if not safe_filename:
             return []
 
-        # Фильтруем системные файлы
+        # Filter system files
         if self._is_system_file(safe_filename):
             return []
 
-        # Создаем безопасный путь для извлечения
+        # Create safe path for extraction
         safe_path = extract_dir / safe_filename
         safe_path.parent.mkdir(parents=True, exist_ok=True)
 
         try:
-            # Извлекаем файл
+            # Extract file
             with zip_ref.open(info) as source, open(safe_path, "wb") as target:
                 shutil.copyfileobj(source, target)
 
-            # Обрабатываем файл
+            # Process file
             file_content = safe_path.read_bytes()
             return (
                 self._process_extracted_file(
@@ -1731,7 +1731,7 @@ class TextExtractor:
 
         except Exception as e:
             logger.warning(
-                f"Ошибка при обработке файла {safe_filename} из архива {archive_name}: {str(e)}"
+                f"Error processing file {safe_filename} from archive {archive_name}: {str(e)}"
             )
             return []
 
@@ -1742,13 +1742,13 @@ class TextExtractor:
         archive_name: str,
         nesting_level: int,
     ) -> List[Dict[str, Any]]:
-        """Извлечение файлов из TAR-архива."""
+        """Extract files from TAR archive."""
         extracted_files = []
         total_size = 0
 
         try:
             with tarfile.open(archive_path, "r:*") as tar_ref:
-                # Проверяем размер распакованных файлов
+                # Check uncompressed file sizes
                 for member in tar_ref.getmembers():
                     if member.isfile():
                         total_size += member.size
@@ -1758,26 +1758,26 @@ class TextExtractor:
                                 "Extracted files size exceeds maximum allowed size (tar bomb protection)"
                             )
 
-                # Извлекаем файлы
+                # Extract files
                 for member in tar_ref.getmembers():
                     if not member.isfile():
                         continue
 
-                    # Санитизируем имя файла
+                    # Sanitize filename
                     safe_filename = self._sanitize_archive_filename(member.name)
                     if not safe_filename:
                         continue
 
-                    # Фильтруем системные файлы
+                    # Filter system files
                     if self._is_system_file(safe_filename):
                         continue
 
-                    # Создаем безопасный путь для извлечения
+                    # Create safe path for extraction
                     safe_path = extract_dir / safe_filename
                     safe_path.parent.mkdir(parents=True, exist_ok=True)
 
                     try:
-                        # Извлекаем файл
+                        # Extract file
                         with (
                             tar_ref.extractfile(member) as source,
                             open(safe_path, "wb") as target,
@@ -1785,7 +1785,7 @@ class TextExtractor:
                             if source:
                                 shutil.copyfileobj(source, target)
 
-                        # Обрабатываем файл
+                        # Process file
                         file_content = safe_path.read_bytes()
                         file_result = self._process_extracted_file(
                             file_content,
@@ -1800,7 +1800,7 @@ class TextExtractor:
 
                     except Exception as e:
                         logger.warning(
-                            f"Ошибка при обработке файла {safe_filename} из архива {archive_name}: {str(e)}"
+                            f"Error processing file {safe_filename} from archive {archive_name}: {str(e)}"
                         )
                         continue
 
@@ -1816,7 +1816,7 @@ class TextExtractor:
         archive_name: str,
         nesting_level: int,
     ) -> List[Dict[str, Any]]:
-        """Извлечение файлов из RAR-архива."""
+        """Extract files from RAR archive."""
         if not rarfile:
             raise ValueError("RAR support not available. Install rarfile library.")
 
@@ -1825,7 +1825,7 @@ class TextExtractor:
 
         try:
             with rarfile.RarFile(archive_path, "r") as rar_ref:
-                # Проверяем размер распакованных файлов
+                # Check uncompressed file sizes
                 for info in rar_ref.infolist():
                     if info.is_dir():
                         continue
@@ -1836,33 +1836,33 @@ class TextExtractor:
                             "Extracted files size exceeds maximum allowed size (rar bomb protection)"
                         )
 
-                # Извлекаем файлы
+                # Extract files
                 for info in rar_ref.infolist():
                     if info.is_dir():
                         continue
 
-                    # Санитизируем имя файла
+                    # Sanitize filename
                     safe_filename = self._sanitize_archive_filename(info.filename)
                     if not safe_filename:
                         continue
 
-                    # Фильтруем системные файлы
+                    # Filter system files
                     if self._is_system_file(safe_filename):
                         continue
 
-                    # Создаем безопасный путь для извлечения
+                    # Create safe path for extraction
                     safe_path = extract_dir / safe_filename
                     safe_path.parent.mkdir(parents=True, exist_ok=True)
 
                     try:
-                        # Извлекаем файл
+                        # Extract file
                         with (
                             rar_ref.open(info) as source,
                             open(safe_path, "wb") as target,
                         ):
                             shutil.copyfileobj(source, target)
 
-                        # Обрабатываем файл
+                        # Process file
                         file_content = safe_path.read_bytes()
                         file_result = self._process_extracted_file(
                             file_content,
@@ -1877,7 +1877,7 @@ class TextExtractor:
 
                     except Exception as e:
                         logger.warning(
-                            f"Ошибка при обработке файла {safe_filename} из архива {archive_name}: {str(e)}"
+                            f"Error processing file {safe_filename} from archive {archive_name}: {str(e)}"
                         )
                         continue
 
@@ -1893,7 +1893,7 @@ class TextExtractor:
         archive_name: str,
         nesting_level: int,
     ) -> List[Dict[str, Any]]:
-        """Извлечение файлов из 7Z-архива."""
+        """Extract files from 7Z archive."""
         if not py7zr:
             raise ValueError("7Z support not available. Install py7zr library.")
 
@@ -1902,7 +1902,7 @@ class TextExtractor:
 
         try:
             with py7zr.SevenZipFile(archive_path, "r") as sz_ref:
-                # Проверяем размер распакованных файлов
+                # Check uncompressed file sizes
                 for info in sz_ref.list():
                     if info.is_dir:
                         continue
@@ -1913,28 +1913,28 @@ class TextExtractor:
                             "Extracted files size exceeds maximum allowed size (7z bomb protection)"
                         )
 
-                # Извлекаем файлы
+                # Extract files
                 sz_ref.extractall(extract_dir)
 
-                # Обрабатываем извлеченные файлы
+                # Process extracted files
                 for root, _dirs, files in os.walk(extract_dir):
                     for file in files:
                         file_path = Path(root) / file
                         relative_path = file_path.relative_to(extract_dir)
 
-                        # Санитизируем имя файла
+                        # Sanitize filename
                         safe_filename = self._sanitize_archive_filename(
                             str(relative_path)
                         )
                         if not safe_filename:
                             continue
 
-                        # Фильтруем системные файлы
+                        # Filter system files
                         if self._is_system_file(safe_filename):
                             continue
 
                         try:
-                            # Обрабатываем файл
+                            # Process file
                             file_content = file_path.read_bytes()
                             file_result = self._process_extracted_file(
                                 file_content,
@@ -1949,7 +1949,7 @@ class TextExtractor:
 
                         except Exception as e:
                             logger.warning(
-                                f"Ошибка при обработке файла {safe_filename} из архива {archive_name}: {str(e)}"
+                                f"Error processing file {safe_filename} from archive {archive_name}: {str(e)}"
                             )
                             continue
 
@@ -1966,13 +1966,13 @@ class TextExtractor:
         archive_name: str,
         nesting_level: int,
     ) -> Optional[List[Dict[str, Any]]]:
-        """Обработка извлеченного файла."""
+        """Process extracted file."""
         try:
-            # Если файл является архивом, рекурсивно обрабатываем его
+            # If file is an archive, recursively process it
             if is_archive_format(basename, settings.SUPPORTED_FORMATS):
                 return self._extract_from_archive(content, basename, nesting_level + 1)
 
-            # Если файл поддерживается, извлекаем текст
+            # If file is supported, extract text
             if is_supported_format(basename, settings.SUPPORTED_FORMATS):
                 extension = get_file_extension(basename)
                 text = self._extract_text_by_format(content, extension, basename)
@@ -1990,22 +1990,22 @@ class TextExtractor:
             return None
 
         except Exception as e:
-            logger.warning(f"Ошибка при обработке файла {filename}: {str(e)}")
+            logger.warning(f"Error processing file {filename}: {str(e)}")
             return None
 
     def _sanitize_archive_filename(self, filename: str) -> str:
-        """Санитизация имени файла из архива."""
+        """Sanitize archive filename."""
         if not filename:
             return ""
 
-        # Удаляем опасные пути
+        # Remove dangerous paths
         filename = filename.replace("..", "").replace("\\", "/").strip("/")
-
-        # Проверяем на абсолютные пути
+        
+        # Check for absolute paths
         if filename.startswith("/"):
             filename = filename[1:]
 
-        # Удаляем пустые части пути
+        # Remove empty path segments
         parts = [part for part in filename.split("/") if part and part != "."]
 
         if not parts:
@@ -2014,7 +2014,7 @@ class TextExtractor:
         return "/".join(parts)
 
     def _is_system_file(self, filename: str) -> bool:
-        """Проверка, является ли файл системным."""
+        """Check if file is a system file."""
         system_files = [
             ".DS_Store",
             "Thumbs.db",
@@ -2035,12 +2035,12 @@ class TextExtractor:
         return False
 
     def _ocr_from_pdf_image_sync(self, page, img_info) -> str:
-        """Синхронный OCR изображения из PDF."""
+        """Synchronous OCR of image from PDF."""
         if not Image:
             return ""
 
         try:
-            # Получаем координаты изображения
+            # Get image coordinates
             x0, y0, x1, y1 = (
                 img_info["x0"],
                 img_info["y0"],
@@ -2048,38 +2048,38 @@ class TextExtractor:
                 img_info["y1"],
             )
 
-            # Проверяем разумность размеров области
+            # Check if area size is reasonable
             width = abs(x1 - x0)
             height = abs(y1 - y0)
 
-            # Ограничиваем размер области для предотвращения DoS
-            max_dimension = 5000  # максимальный размер по любой оси
+            # Limit area size to prevent DoS
+            max_dimension = 5000  # maximum size along any axis
             if width > max_dimension or height > max_dimension:
-                logger.warning(f"Область изображения слишком большая: {width}x{height}")
+                logger.warning(f"Image area too large: {width}x{height}")
                 return ""
 
-            # Обрезаем область изображения из всей страницы
+            # Crop image area from entire page
             cropped_bbox = (x0, y0, x1, y1)
             cropped_page = page.crop(cropped_bbox)
 
-            # Конвертируем обрезанную область в изображение с высоким разрешением
+            # Convert cropped area to high-resolution image
             img_pil = cropped_page.to_image(resolution=300)
 
-            # Безопасный OCR с ограничениями ресурсов
+            # Safe OCR with resource limits
             text = self._safe_tesseract_ocr(img_pil.original)
 
             return text
 
         except Exception as e:
-            logger.warning(f"Ошибка OCR изображения: {str(e)}")
-            # Альтернативный подход - рендерим всю страницу и обрезаем
+            logger.warning(f"OCR error: {str(e)}")
+            # Alternative approach - render entire page and crop
             try:
-                # Конвертируем всю страницу в изображение PIL
+                # Convert entire page to PIL image
                 page_image = page.to_image(resolution=300)
-                pil_image = page_image.original  # Получаем PIL изображение
+                pil_image = page_image.original  # Get PIL image
 
-                # Вычисляем координаты в пикселях (учитывая resolution=300)
-                scale = 300 / 72  # PDF обычно 72 DPI, мы рендерим в 300 DPI
+                # Calculate pixel coordinates (considering resolution=300)
+                scale = 300 / 72  # PDF is usually 72 DPI, we render at 300 DPI
                 pixel_bbox = (
                     int(x0 * scale),
                     int(y0 * scale),
@@ -2087,31 +2087,31 @@ class TextExtractor:
                     int(y1 * scale),
                 )
 
-                # Проверяем разумность размеров в пикселях
+                # Check if pixel dimensions are reasonable
                 pixel_width = abs(pixel_bbox[2] - pixel_bbox[0])
                 pixel_height = abs(pixel_bbox[3] - pixel_bbox[1])
 
                 if pixel_width * pixel_height > 25000000:  # 25MP максимум
                     logger.warning(
-                        f"Область изображения слишком большая: {pixel_width}x{pixel_height} пикселей"
+                        f"Image area too large: {pixel_width}x{pixel_height} pixels"
                     )
                     return ""
 
-                # Обрезаем область изображения
+                # Crop image area
                 cropped_img = pil_image.crop(pixel_bbox)
 
-                # Безопасный OCR с ограничениями ресурсов
+                # Safe OCR with resource limits
                 text = self._safe_tesseract_ocr(cropped_img)
 
                 return text
 
             except Exception as e2:
                 logger.warning(
-                    f"Альтернативная попытка OCR также не удалась: {str(e2)}"
+                    f"Alternative OCR attempt also failed: {str(e2)}"
                 )
                 return ""
 
-    # Веб-экстракция (новое в v1.10.0)
+    # Web extraction (new in v1.10.0)
 
     def _extract_page_with_playwright(
         self,
@@ -2120,20 +2120,20 @@ class TextExtractor:
         extraction_options: Optional[Any] = None,
     ) -> tuple[str, str]:
         """
-        Извлечение HTML контента страницы с помощью Playwright (с поддержкой JS, обновлено в v1.10.2).
+        Extract HTML content of page using Playwright (with JS support, updated in v1.10.2).
 
         Args:
-            url: URL страницы
-            user_agent: Пользовательский User-Agent
-            extraction_options: Настройки извлечения
+            url: Page URL
+            user_agent: Custom User-Agent
+            extraction_options: Extraction settings
 
         Returns:
             tuple[str, str]: (html_content, final_url)
         """
         if not sync_playwright:
-            raise ValueError("Playwright не установлен")
+            raise ValueError("Playwright is not installed")
 
-        # Определяем настройки с учетом переданных параметров или значений по умолчанию
+        # Define settings considering provided parameters or defaults
         web_page_timeout = (
             extraction_options.web_page_timeout
             if extraction_options and extraction_options.web_page_timeout is not None
@@ -2163,7 +2163,7 @@ class TextExtractor:
         final_url = url
 
         with sync_playwright() as p:
-            # Запускаем Chromium (установлен в Dockerfile)
+            # Launch Chromium (installed in Dockerfile)
             browser = p.chromium.launch(
                 headless=True,
                 args=[
@@ -2171,12 +2171,12 @@ class TextExtractor:
                     "--disable-dev-shm-usage",
                     "--disable-gpu",
                     "--disable-extensions",
-                    "--disable-web-security",  # для обхода CORS при локальной разработке
+                    "--disable-web-security",  # for bypassing CORS in local development
                 ],
             )
 
             try:
-                # Определяем, включать ли JavaScript
+                # Determine whether to enable JavaScript
                 enable_javascript = (
                     extraction_options.enable_javascript
                     if extraction_options
@@ -2187,22 +2187,22 @@ class TextExtractor:
                 context = browser.new_context(
                     user_agent=user_agent or settings.DEFAULT_USER_AGENT,
                     viewport={"width": 1280, "height": 720},
-                    java_script_enabled=enable_javascript,  # Правильная настройка отключения JS
+                    java_script_enabled=enable_javascript,  # Correct JS disable setting
                 )
 
                 page = None
                 try:
                     page = context.new_page()
 
-                    # Устанавливаем таймауты для защиты от DoS-атак
-                    page.set_default_timeout(web_page_timeout * 1000)  # в миллисекундах
+                    # Set timeouts for DoS protection
+                    page.set_default_timeout(web_page_timeout * 1000)  # in milliseconds
 
-                    # Дополнительная защита от DoS: ограничиваем время выполнения JavaScript
+                    # Additional DoS protection: limit JavaScript execution time
                     page.set_default_navigation_timeout(web_page_timeout * 1000)
 
-                    # Переходим на страницу
+                    # Navigate to page
                     logger.info(
-                        f"Загрузка страницы с Playwright: {url} (JS: {'включен' if enable_javascript else 'отключен'})"
+                        f"Loading page with Playwright: {url} (JS: {'enabled' if enable_javascript else 'disabled'})"
                     )
                     response = page.goto(url, wait_until="domcontentloaded")
 
@@ -2211,13 +2211,13 @@ class TextExtractor:
 
                     final_url = page.url
 
-                    # Ждем дополнительной загрузки JS (если включено)
+                    # Wait for additional JS loading (if enabled)
                     if enable_javascript:
-                        logger.info(f"Ожидание JS-рендеринга ({js_render_timeout}s)...")
+                        logger.info(f"Waiting for JS rendering ({js_render_timeout}s)...")
 
-                        # Ждем загрузки сети с защитой от DoS атак
+                        # Wait for network load with DoS protection
                         try:
-                            # Ограничиваем время выполнения для защиты от ресурсоемких скриптов
+                            # Limit execution time for protection against resource-intensive scripts
                             page.wait_for_load_state(
                                 "networkidle",
                                 timeout=min(
@@ -2226,34 +2226,34 @@ class TextExtractor:
                             )
                         except Exception as e:
                             logger.warning(
-                                f"Таймаут ожидания сети (защита от DoS): {str(e)}"
+                                f"Network wait timeout (DoS protection): {str(e)}"
                             )
 
-                        # Обработка lazy loading с защитой от бесконечности
+                        # Lazy loading processing with infinite loop protection
                         if enable_lazy_loading_wait:
                             self._safe_scroll_for_lazy_loading(page, extraction_options)
 
-                        # Дополнительная задержка для завершения JS
+                        # Additional delay for JS completion
                         import time
 
                         time.sleep(web_page_delay)
 
-                    # Получаем финальный HTML
+                    # Get final HTML
                     html_content = page.content()
-                    logger.info(f"HTML получен, размер: {len(html_content)} символов")
+                    logger.info(f"HTML received, size: {len(html_content)} characters")
 
                 finally:
-                    # КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: явно закрываем page для освобождения памяти
+                    # CRITICAL FIX: explicitly close page to free memory
                     if page:
                         try:
                             page.close()
                         except Exception as e:
-                            logger.warning(f"Ошибка при закрытии page: {str(e)}")
-                    # Явно закрываем context
+                            logger.warning(f"Error closing page: {str(e)}")
+                    # Explicitly close context
                     try:
                         context.close()
                     except Exception as e:
-                        logger.warning(f"Ошибка при закрытии context: {str(e)}")
+                        logger.warning(f"Error closing context: {str(e)}")
 
             finally:
                 browser.close()
@@ -2264,16 +2264,16 @@ class TextExtractor:
         self, page, extraction_options: Optional[Any] = None
     ) -> None:
         """
-        Безопасный скролл страницы для активации lazy loading с защитой от бесконечности (обновлено в v1.10.2).
+        Safe page scroll to activate lazy loading with infinite loop protection (updated in v1.10.2).
 
         Args:
-            page: Playwright page объект
-            extraction_options: Настройки извлечения
+            page: Playwright page object
+            extraction_options: Extraction settings
         """
         try:
-            logger.info("Начинаем безопасный скролл для активации lazy loading...")
+            logger.info("Starting safe scroll for lazy loading activation...")
 
-            # Определяем максимальное количество попыток скролла
+            # Determine maximum number of scroll attempts
             max_scroll_attempts = (
                 extraction_options.max_scroll_attempts
                 if extraction_options
@@ -2281,59 +2281,59 @@ class TextExtractor:
                 else settings.MAX_SCROLL_ATTEMPTS
             )
 
-            # Получаем начальную высоту страницы
+            # Get initial page height
             initial_height = page.evaluate("document.body.scrollHeight")
-            logger.info(f"Начальная высота страницы: {initial_height}px")
+            logger.info(f"Initial page height: {initial_height}px")
 
             scroll_attempts = 0
             last_height = initial_height
-            stable_count = 0  # Счетчик стабильных измерений
+            stable_count = 0  # Counter of stable measurements
 
             while scroll_attempts < max_scroll_attempts:
                 scroll_attempts += 1
-                logger.info(f"Попытка скролла {scroll_attempts}/{max_scroll_attempts}")
+                logger.info(f"Scroll attempt {scroll_attempts}/{max_scroll_attempts}")
 
-                # Плавный скролл до конца страницы
+                # Smooth scroll to end of page
                 page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
 
-                # Ждем небольшую задержку для загрузки контента
+                # Wait a short delay for content to load
                 import time
 
                 time.sleep(1)
 
-                # Проверяем новую высоту
+                # Check new height
                 new_height = page.evaluate("document.body.scrollHeight")
-                logger.info(f"Новая высота страницы: {new_height}px")
+                logger.info(f"New page height: {new_height}px")
 
-                # Если высота не изменилась, увеличиваем счетчик стабильности
+                # If height hasn't changed, increment stability counter
                 if new_height == last_height:
                     stable_count += 1
-                    logger.info(f"Высота стабильна, счетчик: {stable_count}")
-
-                    # Если высота стабильна уже 2 раза подряд - прекращаем
+                    logger.info(f"Height stable, counter: {stable_count}")
+                    
+                    # If height has been stable 2 times in a row - stop
                     if stable_count >= 2:
                         logger.info(
-                            "Высота страницы стабилизировалась, завершаем скролл"
+                            "Page height stabilized, completing scroll"
                         )
                         break
                 else:
-                    # Высота изменилась, сбрасываем счетчик
+                    # Height changed, reset counter
                     stable_count = 0
                     last_height = new_height
 
-                # Дополнительная проверка: если страница выросла слишком сильно, прекращаем
-                if new_height > initial_height * 10:  # Если страница выросла в 10 раз
+                # Additional check: if page grew too much, stop
+                if new_height > initial_height * 10:  # If page grew 10x
                     logger.warning(
-                        "Страница выросла подозрительно сильно, возможно бесконечный скролл"
+                        "Page grew suspiciously large, possibly infinite scroll"
                     )
                     break
 
-            # Возвращаемся в начало страницы
+            # Return to top of page
             page.evaluate("window.scrollTo(0, 0)")
-            logger.info("Скролл завершен, возвращены в начало страницы")
+            logger.info("Scroll completed, returned to top of page")
 
         except Exception as e:
-            logger.warning(f"Ошибка при скролле для lazy loading: {str(e)}")
+            logger.warning(f"Error during lazy loading scroll: {str(e)}")
 
     def _determine_content_type(
         self,
@@ -2342,22 +2342,22 @@ class TextExtractor:
         extraction_options: Optional[Any] = None,
     ) -> tuple[str, str]:
         """
-        Определение типа контента через HEAD запрос (новое в v1.10.3).
+        Determine content type via HEAD request (new in v1.10.3).
 
         Args:
-            url: URL для проверки
-            user_agent: Пользовательский User-Agent
-            extraction_options: Настройки извлечения
+            url: URL to check
+            user_agent: Custom User-Agent
+            extraction_options: Extraction settings
 
         Returns:
-            tuple[str, str]: (content_type, final_url) - тип контента и финальный URL после редиректов
+            tuple[str, str]: (content_type, final_url) - content type and final URL after redirects
         """
         if not requests:
             raise ValueError(
                 "requests library not available for content type determination"
             )
 
-        # Определяем настройки с учетом переданных параметров или значений по умолчанию
+        # Define settings considering provided parameters or defaults
         head_timeout = (
             extraction_options.web_page_timeout
             if extraction_options and extraction_options.web_page_timeout is not None
@@ -2376,7 +2376,7 @@ class TextExtractor:
             else 5
         )
 
-        # Установка User-Agent и заголовков
+        # Set User-Agent and headers
         headers = {
             "User-Agent": user_agent or settings.DEFAULT_USER_AGENT,
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -2385,12 +2385,12 @@ class TextExtractor:
             "Connection": "keep-alive",
         }
 
-        # Создание сессии для следования редиректам
+        # Create session to follow redirects
         session = requests.Session()
         session.headers.update(headers)
 
         try:
-            logger.info(f"Выполняю HEAD запрос для определения типа контента: {url}")
+            logger.info(f"Performing HEAD request to determine content type: {url}")
 
             response = session.head(
                 url, timeout=head_timeout, allow_redirects=follow_redirects, stream=True
@@ -2398,7 +2398,7 @@ class TextExtractor:
 
             if follow_redirects and len(response.history) > max_redirects:
                 logger.warning(
-                    f"Превышено максимальное количество редиректов ({max_redirects})"
+                    f"Maximum number of redirects exceeded ({max_redirects})"
                 )
 
             response.raise_for_status()
@@ -2406,13 +2406,13 @@ class TextExtractor:
             content_type = response.headers.get("content-type", "").lower()
             final_url = response.url
 
-            logger.info(f"Определен Content-Type: {content_type} для URL: {final_url}")
+            logger.info(f"Content-Type determined: {content_type} for URL: {final_url}")
 
             return content_type, final_url
 
         except Exception as e:
-            logger.warning(f"Ошибка HEAD запроса: {str(e)}, попробуем GET запрос")
-            # Fallback: делаем GET запрос но читаем только заголовки
+            logger.warning(f"HEAD request error: {str(e)}, trying GET request")
+            # Fallback: perform a GET request but only read headers
             try:
                 response = session.get(
                     url,
@@ -2425,52 +2425,52 @@ class TextExtractor:
                 content_type = response.headers.get("content-type", "").lower()
                 final_url = response.url
 
-                # Закрываем соединение, не читая тело
+                # Close connection without reading body
                 response.close()
 
                 logger.info(
-                    f"Определен Content-Type через GET: {content_type} для URL: {final_url}"
+                    f"Content-Type determined via GET: {content_type} for URL: {final_url}"
                 )
                 return content_type, final_url
 
             except Exception as get_error:
-                logger.error(f"Ошибка при определении типа контента: {str(get_error)}")
+                logger.error(f"Error determining content type: {str(get_error)}")
                 raise ValueError(f"Unable to determine content type: {str(get_error)}")
         finally:
             session.close()
 
     def _is_html_content(self, content_type: str, url: str) -> bool:
         """
-        Определение является ли контент HTML страницей (новое в v1.10.3).
+        Determine if content is an HTML page (new in v1.10.3).
 
         Args:
-            content_type: MIME тип из заголовков
-            url: URL для анализа расширения как fallback
+            content_type: MIME type from headers
+            url: URL for extension analysis as fallback
 
         Returns:
-            bool: True если это HTML страница
+            bool: True if it is an HTML page
         """
-        # Приоритет: Content-Type
+        # Priority: Content-Type
         if "text/html" in content_type or "application/xhtml" in content_type:
             return True
 
-        # Проверяем специфические случаи
+        # Check specific cases
         if "text/plain" in content_type:
-            # Для text/plain проверяем расширение URL
+            # For text/plain check URL extension
             from app.utils import get_file_extension
 
-            extension = get_file_extension(url.split("?")[0])  # убираем параметры
+            extension = get_file_extension(url.split("?")[0])  # remove parameters
             return extension in ["html", "htm"]
 
-        # Если Content-Type неопределенный или отсутствует
+        # If Content-Type is undefined or missing
         if not content_type or "application/octet-stream" in content_type:
-            # Используем расширение URL как fallback
+            # Use URL extension as fallback
             from app.utils import get_file_extension
 
-            extension = get_file_extension(url.split("?")[0])  # убираем параметры
+            extension = get_file_extension(url.split("?")[0])  # remove parameters
             return (
                 extension in ["html", "htm"] or extension is None
-            )  # None означает вероятно динамическая страница
+            )  # None likely means dynamic page
 
         return False
 
@@ -2481,20 +2481,20 @@ class TextExtractor:
         extraction_options: Optional[Any] = None,
     ) -> List[Dict[str, Any]]:
         """
-        Скачивание файла по URL и его обработка как обычного файла (новое в v1.10.3).
+        Download file from URL and process it as a regular file (new in v1.10.3).
 
         Args:
-            url: URL файла для скачивания
-            user_agent: Пользовательский User-Agent
-            extraction_options: Настройки извлечения
+            url: URL of file to download
+            user_agent: Custom User-Agent
+            extraction_options: Extraction settings
 
         Returns:
-            List[Dict[str, Any]]: Результат извлечения текста как от /v1/extract/file
+            List[Dict[str, Any]]: Result of text extraction like from /v1/extract/file
         """
         if not requests:
             raise ValueError("requests library not available for file download")
 
-        # Определяем настройки с учетом переданных параметров или значений по умолчанию
+        # Define settings considering provided parameters or defaults
         download_timeout = (
             extraction_options.web_page_timeout
             if extraction_options and extraction_options.web_page_timeout is not None
@@ -2507,20 +2507,20 @@ class TextExtractor:
             else True
         )
 
-        # Установка User-Agent и заголовков
+        # Set User-Agent and headers
         headers = {
             "User-Agent": user_agent or settings.DEFAULT_USER_AGENT,
             "Accept": "*/*",
             "Connection": "keep-alive",
         }
 
-        # Создание сессии
+        # Create session
         session = requests.Session()
         session.headers.update(headers)
 
         temp_file_path = None
         try:
-            logger.info(f"Скачиваю файл с URL: {url}")
+            logger.info(f"Downloading file from URL: {url}")
 
             response = session.get(
                 url,
@@ -2530,17 +2530,17 @@ class TextExtractor:
             )
             response.raise_for_status()
 
-            # Проверяем размер файла
+            # Check file size
             content_length = response.headers.get("content-length")
             if content_length and int(content_length) > settings.MAX_FILE_SIZE:
                 raise ValueError(
                     f"File too large: {content_length} bytes (max {settings.MAX_FILE_SIZE} bytes)"
                 )
 
-            # Определяем имя файла
+            # Determine filename
             filename = self._extract_filename_from_response(response, url)
 
-            # Создаем временный файл
+            # Create temporary file
             import tempfile
 
             suffix = (
@@ -2551,7 +2551,7 @@ class TextExtractor:
             with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
                 temp_file_path = temp_file.name
 
-                # Скачиваем файл порциями с проверкой размера
+                # Download file in chunks with size check
                 downloaded_size = 0
                 for chunk in response.iter_content(chunk_size=8192):
                     if chunk:
@@ -2562,42 +2562,42 @@ class TextExtractor:
                             )
                         temp_file.write(chunk)
 
-            logger.info(f"Файл скачан ({downloaded_size} байт): {filename}")
+            logger.info(f"File downloaded ({downloaded_size} bytes): {filename}")
 
-            # Читаем скачанный файл и обрабатываем его как обычный файл
+            # Read downloaded file and process it as a regular file
             with open(temp_file_path, "rb") as f:
                 file_content = f.read()
 
-            # Используем существующую логику извлечения текста
+            # Use existing text extraction logic
             return self.extract_text(file_content, filename)
 
         except Exception as e:
-            logger.error(f"Ошибка при скачивании файла {url}: {str(e)}")
+            logger.error(f"Error downloading file {url}: {str(e)}")
             raise ValueError(f"Error downloading file: {str(e)}")
         finally:
-            # Очистка временного файла
+            # Cleanup of temporary file
             if temp_file_path and os.path.exists(temp_file_path):
                 try:
                     os.unlink(temp_file_path)
-                    logger.debug(f"Временный файл удален: {temp_file_path}")
+                    logger.debug(f"Temporary file deleted: {temp_file_path}")
                 except OSError as e:
                     logger.warning(
-                        f"Не удалось удалить временный файл {temp_file_path}: {str(e)}"
+                        f"Failed to delete temporary file {temp_file_path}: {str(e)}"
                     )
             session.close()
 
     def _extract_filename_from_response(self, response, url: str) -> str:
         """
-        Извлечение имени файла из HTTP ответа (новое в v1.10.3).
+        Extract filename from HTTP response (new in v1.10.3).
 
         Args:
-            response: HTTP ответ requests
-            url: Исходный URL
+            response: requests HTTP response
+            url: Original URL
 
         Returns:
-            str: Имя файла
+            str: Filename
         """
-        # Пытаемся получить имя файла из заголовка Content-Disposition
+        # Try to get filename from Content-Disposition header
         content_disposition = response.headers.get("content-disposition", "")
         if "filename=" in content_disposition:
             import re
@@ -2612,13 +2612,13 @@ class TextExtractor:
 
                     return sanitize_filename(filename)
 
-        # Используем последний сегмент URL как имя файла
+        # Use the last segment of the URL as the filename
         from urllib.parse import unquote, urlparse
 
         parsed_url = urlparse(url)
         filename = unquote(parsed_url.path.split("/")[-1])
 
-        # Если нет расширения, пытаемся определить его по Content-Type
+        # If there is no extension, try to determine it by Content-Type
         if not get_file_extension(filename):
             content_type = response.headers.get("content-type", "").lower()
             extension = self._get_extension_from_content_type(content_type)
@@ -2631,18 +2631,18 @@ class TextExtractor:
 
     def _get_extension_from_content_type(self, content_type: str) -> Optional[str]:
         """
-        Определение расширения файла по Content-Type (новое в v1.10.3).
+        Determine file extension by Content-Type (new in v1.10.3).
 
         Args:
-            content_type: MIME тип
+            content_type: MIME type
 
         Returns:
-            Optional[str]: Расширение файла или None
+            Optional[str]: File extension or None
         """
-        # Маппинг популярных MIME типов на расширения
+        # Mapping of popular MIME types to extensions
         mime_to_extension = settings.MIME_TO_EXTENSION
 
-        # Убираем параметры из Content-Type (например, charset)
+        # Remove parameters from Content-Type (e.g., charset)
         clean_content_type = content_type.split(";")[0].strip()
 
         return mime_to_extension.get(clean_content_type)
@@ -2653,7 +2653,7 @@ class TextExtractor:
         user_agent: Optional[str] = None,
         extraction_options: Optional[Any] = None,
     ) -> List[Dict[str, Any]]:
-        """Извлечение текста с веб-страницы или файла по URL (обновлено в v1.10.3)."""
+        """Extract text from a web page or file by URL (updated in v1.10.3)."""
         # Проверка безопасности URL
         if not self._is_safe_url(url):
             raise ValueError(
@@ -2661,29 +2661,29 @@ class TextExtractor:
             )
 
         try:
-            # Шаг 1: Определяем тип контента через HEAD запрос
+            # Step 1: Determine content type via HEAD request
             content_type, final_url = self._determine_content_type(
                 url, user_agent, extraction_options
             )
 
-            # Шаг 2: Выбираем стратегию обработки
+            # Step 2: Choose processing strategy
             if self._is_html_content(content_type, final_url):
                 logger.info(
-                    f"URL {final_url} определен как HTML страница (Content-Type: {content_type}), используем веб-экстрактор"
+                    f"URL {final_url} determined as HTML page (Content-Type: {content_type}), using web extractor"
                 )
                 return self._extract_html_page(
                     final_url, user_agent, extraction_options
                 )
             else:
                 logger.info(
-                    f"URL {final_url} определен как файл (Content-Type: {content_type}), скачиваем и обрабатываем"
+                    f"URL {final_url} determined as file (Content-Type: {content_type}), downloading and processing"
                 )
                 return self._download_and_extract_file(
                     final_url, user_agent, extraction_options
                 )
 
         except Exception as e:
-            logger.error(f"Ошибка при обработке URL {url}: {str(e)}")
+            logger.error(f"Error processing URL {url}: {str(e)}")
             raise ValueError(f"Error processing URL: {str(e)}")
 
     def _extract_html_page(
@@ -2693,62 +2693,61 @@ class TextExtractor:
         extraction_options: Optional[Any] = None,
     ) -> List[Dict[str, Any]]:
         """
-        Извлечение текста с HTML страницы (выделено из extract_from_url в v1.10.3).
+        Extract text from HTML page (separated from extract_from_url in v1.10.3).
 
         Args:
-            url: URL HTML страницы
-            user_agent: Пользовательский User-Agent
-            extraction_options: Настройки извлечения
+            url: HTML page URL
+            user_agent: Custom User-Agent
+            extraction_options: Extraction settings
 
         Returns:
-            List[Dict[str, Any]]: Результат извлечения текста со страницы
+            List[Dict[str, Any]]: Result of text extraction from page
         """
         html_content = ""
         final_url = url
 
-        # Определяем настройки с учетом переданных параметров или значений по умолчанию
+        # Define settings considering provided parameters or defaults
         enable_javascript = (
             extraction_options.enable_javascript
             if extraction_options and extraction_options.enable_javascript is not None
             else settings.ENABLE_JAVASCRIPT
         )
 
-        # Выбираем метод загрузки в зависимости от настроек JavaScript
+        # Choose loading method depending on JavaScript settings
         if enable_javascript and sync_playwright:
-            logger.info("Использую Playwright для загрузки страницы с JS")
+            logger.info("Using Playwright to load page with JS")
             try:
                 html_content, final_url = self._extract_page_with_playwright(
                     url, user_agent, extraction_options
                 )
             except Exception as e:
-                logger.warning(f"Ошибка Playwright: {str(e)}, переключаюсь на requests")
-                # Fallback на requests при ошибке Playwright
+                logger.warning(f"Playwright error: {str(e)}, switching to requests")
+                # Fallback to requests on Playwright error
                 html_content, final_url = self._extract_page_with_requests(
                     url, user_agent, extraction_options
                 )
         else:
-            if enable_javascript and not sync_playwright:
                 logger.warning(
-                    "JavaScript включен, но Playwright не установлен, использую requests"
+                    "JavaScript enabled, but Playwright is not installed, using requests"
                 )
-            logger.info("Использую requests для загрузки страницы")
+            logger.info("Using requests to load page")
             html_content, final_url = self._extract_page_with_requests(
                 url, user_agent, extraction_options
             )
 
         try:
-            # Извлечение текста из HTML
+            # Extract text from HTML
             page_text = self._extract_text_from_html(html_content)
 
-            # Поиск и обработка изображений
+            # Find and process images
             image_texts = self._extract_images_from_html(
                 html_content, final_url, extraction_options
             )
 
-            # Формирование результата
+            # Format results
             results = []
 
-            # Добавляем основной контент страницы
+            # Add main page content
             results.append(
                 {
                     "filename": "page_content",
@@ -2759,7 +2758,7 @@ class TextExtractor:
                 }
             )
 
-            # Добавляем тексты с изображений
+            # Add text from images
             results.extend(image_texts)
 
             return results
@@ -2774,12 +2773,12 @@ class TextExtractor:
         extraction_options: Optional[Any] = None,
     ) -> tuple[str, str]:
         """
-        Извлечение HTML контента страницы с помощью requests (без JS, обновлено в v1.10.2).
+        Extract HTML content of page using requests (without JS, updated in v1.10.2).
 
         Args:
-            url: URL страницы
-            user_agent: Пользовательский User-Agent
-            extraction_options: Настройки извлечения
+            url: Page URL
+            user_agent: Custom User-Agent
+            extraction_options: Extraction settings
 
         Returns:
             tuple[str, str]: (html_content, final_url)
@@ -2787,7 +2786,7 @@ class TextExtractor:
         if not requests:
             raise ValueError("requests library not available for web extraction")
 
-        # Определяем настройки с учетом переданных параметров или значений по умолчанию
+        # Define settings considering provided parameters or defaults
         web_page_timeout = (
             extraction_options.web_page_timeout
             if extraction_options and extraction_options.web_page_timeout is not None
@@ -2800,7 +2799,7 @@ class TextExtractor:
             else True
         )
 
-        # Установка User-Agent
+        # Set User-Agent
         headers = {
             "User-Agent": user_agent or settings.DEFAULT_USER_AGENT,
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -2810,7 +2809,7 @@ class TextExtractor:
         }
 
         try:
-            # Загрузка страницы с таймаутом
+            # Load page with timeout
             response = requests.get(
                 url,
                 headers=headers,
@@ -2820,13 +2819,13 @@ class TextExtractor:
             )
             response.raise_for_status()
 
-            # Автоопределение кодировки
+            # Auto-detect encoding
             response.encoding = response.apparent_encoding or "utf-8"
             html_content = response.text
             final_url = response.url
 
             logger.info(
-                f"HTML получен через requests, размер: {len(html_content)} символов"
+                f"HTML received via requests, size: {len(html_content)} characters"
             )
             return html_content, final_url
 
@@ -2839,11 +2838,11 @@ class TextExtractor:
                 raise ValueError(f"Failed to load page: {str(e)}")
 
     def _is_safe_url(self, url: str) -> bool:
-        """Проверка безопасности URL (защита от SSRF)."""
+        """Check URL safety (SSRF protection)."""
         try:
             parsed_url = urlparse(url)
 
-            # Проверяем схему URL
+            # Check URL scheme
             if not self._check_url_scheme(parsed_url.scheme):
                 return False
 
@@ -2852,32 +2851,32 @@ class TextExtractor:
                 logger.warning(f"No hostname in URL: {url}")
                 return False
 
-            # Проверяем заблокированные хосты
+            # Check blocked hostnames
             if not self._check_hostname_not_blocked(hostname, url):
                 return False
 
-            # Получаем IP-адреса хоста
+            # Get host IP addresses
             ips = self._resolve_hostname_ips(hostname)
             if not ips:
                 return False
 
-            # Проверяем безопасность всех IP-адресов
+            # Check safety of all IP addresses
             return self._check_all_ips_safe(ips, url)
 
         except Exception as e:
             logger.warning(f"Error checking URL safety: {str(e)}")
-            # Fail-closed: в случае ошибки блокируем доступ
+            # Fail-closed: block access in case of error
             return False
 
     def _check_url_scheme(self, scheme: str) -> bool:
-        """Проверка схемы URL."""
+        """Check URL scheme."""
         if scheme not in ["http", "https"]:
             logger.warning(f"Unsupported URL scheme: {scheme}")
             return False
         return True
 
     def _check_hostname_not_blocked(self, hostname: str, url: str) -> bool:
-        """Проверка, что hostname не заблокирован."""
+        """Check that hostname is not blocked."""
         blocked_hostnames = settings.BLOCKED_HOSTNAMES.split(",")
         hostname_lower = hostname.lower()
 
@@ -2889,7 +2888,7 @@ class TextExtractor:
         return True
 
     def _resolve_hostname_ips(self, hostname: str) -> list:
-        """Разрешение IP-адресов для hostname."""
+        """Resolve IP addresses for hostname."""
         import socket
 
         try:
@@ -2902,30 +2901,30 @@ class TextExtractor:
             return []
 
     def _check_all_ips_safe(self, ips: list, url: str) -> bool:
-        """Проверка безопасности всех IP-адресов."""
+        """Check safety of all IP addresses."""
         for ip_str in ips:
             if not self._check_single_ip_safe(ip_str, url):
                 return False
         return True
 
     def _check_single_ip_safe(self, ip_str: str, url: str) -> bool:
-        """Проверка безопасности одного IP-адреса."""
+        """Check safety of a single IP address."""
         try:
             ip_obj = ipaddress.ip_address(ip_str)
 
-            # Проверяем специальные адреса
+            # Check special addresses
             if self._is_special_ip_unsafe(ip_obj, ip_str, url):
                 return False
 
-            # Проверяем заблокированные диапазоны
+            # Check blocked ranges
             if self._is_ip_in_blocked_ranges(ip_obj, ip_str, url):
                 return False
 
-            # Проверяем metadata service
+            # Check metadata service
             if self._is_metadata_service_ip(ip_obj, ip_str, url):
                 return False
 
-            # Проверяем Docker bridge
+            # Check Docker bridge
             if self._is_docker_bridge_ip(ip_obj, ip_str, url):
                 return False
 
@@ -2933,10 +2932,10 @@ class TextExtractor:
 
         except ValueError as e:
             logger.warning(f"Invalid IP address {ip_str}: {str(e)}")
-            return True  # Невалидный IP не блокируем
+            return True  # Do not block invalid IP
 
     def _is_special_ip_unsafe(self, ip_obj, ip_str: str, url: str) -> bool:
-        """Проверка на специальные небезопасные IP."""
+        """Check for special unsafe IPs."""
         if ip_obj.is_loopback or ip_obj.is_private or ip_obj.is_link_local:
             logger.warning(
                 f"Blocked special IP {ip_str} (loopback/private/link-local) for URL {url}"
@@ -2945,7 +2944,7 @@ class TextExtractor:
         return False
 
     def _is_ip_in_blocked_ranges(self, ip_obj, ip_str: str, url: str) -> bool:
-        """Проверка IP на принадлежность заблокированным диапазонам."""
+        """Check if IP belongs to blocked ranges."""
         blocked_ranges = settings.BLOCKED_IP_RANGES.split(",")
 
         for range_str in blocked_ranges:
@@ -2965,14 +2964,14 @@ class TextExtractor:
         return False
 
     def _is_metadata_service_ip(self, ip_obj, ip_str: str, url: str) -> bool:
-        """Проверка на metadata service IP."""
+        """Check for metadata service IP."""
         if str(ip_obj) == "169.254.169.254":
             logger.warning(f"Blocked metadata service IP {ip_str} for URL {url}")
             return True
         return False
 
     def _is_docker_bridge_ip(self, ip_obj, ip_str: str, url: str) -> bool:
-        """Проверка на Docker bridge gateway IP."""
+        """Check for Docker bridge gateway IP."""
         if ip_obj.version == 4:
             octets = str(ip_obj).split(".")
             if (
@@ -2986,21 +2985,21 @@ class TextExtractor:
         return False
 
     def _extract_text_from_html(self, html_content: str) -> str:
-        """Извлечение текста из HTML контента."""
+        """Extract text from HTML content."""
         if not BeautifulSoup:
             raise ValueError("BeautifulSoup not available for HTML parsing")
 
         try:
             soup = BeautifulSoup(html_content, "lxml")
 
-            # Удаляем скрипты, стили и другие нетекстовые элементы
+            # Remove scripts, styles and other non-text elements
             for script in soup(["script", "style", "nav", "header", "footer", "aside"]):
                 script.decompose()
 
-            # Извлекаем текст
+            # Extract text
             text = soup.get_text()
 
-            # Очистка текста
+            # Clean text
             lines = []
             for line in text.splitlines():
                 line = line.strip()
@@ -3016,34 +3015,34 @@ class TextExtractor:
     def _extract_images_from_html(
         self, html_content: str, base_url: str, extraction_options: Optional[Any] = None
     ) -> List[Dict[str, Any]]:
-        """Извлечение и обработка изображений со страницы (обновлено в v1.10.2)."""
+        """Extract and process images from the page (updated in v1.10.2)."""
         if not BeautifulSoup or not Image:
             return []
 
-        # Настройка параметров извлечения
+        # Setup extraction parameters
         options = self._setup_image_extraction_options(extraction_options)
         if not options["process_images"]:
-            logger.info("Обработка изображений отключена в настройках извлечения")
+            logger.info("Image processing disabled in extraction settings")
             return []
 
         try:
-            # Парсинг изображений из HTML
+            # Parse images from HTML
             img_tags = self._parse_images_from_html(
                 html_content, options["max_images_per_page"]
             )
             if not img_tags:
                 return []
 
-            # Категоризация изображений
+            # Categorize images
             base64_images, url_images = self._categorize_images(
                 img_tags, options["enable_base64_images"]
             )
             logger.info(
-                f"Найдено изображений: {len(url_images)} URL, {len(base64_images)} base64"
+                f"Images found: {len(url_images)} URL, {len(base64_images)} base64"
             )
 
             results = []
-            # Обработка изображений
+            # Process images
             results.extend(
                 self._process_base64_images(base64_images, extraction_options)
             )
@@ -3060,7 +3059,7 @@ class TextExtractor:
     def _setup_image_extraction_options(
         self, extraction_options: Optional[Any]
     ) -> dict:
-        """Настройка параметров извлечения изображений."""
+        """Setup image extraction parameters."""
         return {
             "process_images": (
                 extraction_options.process_images
@@ -3082,13 +3081,13 @@ class TextExtractor:
         }
 
     def _parse_images_from_html(self, html_content: str, max_images: int) -> list:
-        """Парсинг изображений из HTML контента."""
+        """Parse images from HTML content."""
         soup = BeautifulSoup(html_content, "lxml")
         img_tags = soup.find_all("img", src=True)
         return img_tags[:max_images]
 
     def _categorize_images(self, img_tags: list, enable_base64: bool) -> tuple:
-        """Категоризация изображений на base64 и URL."""
+        """Categorize images into base64 and URL."""
         base64_images = []
         url_images = []
 
@@ -3104,7 +3103,7 @@ class TextExtractor:
     def _process_base64_images(
         self, base64_images: list, extraction_options: Optional[Any]
     ) -> list:
-        """Обработка base64 изображений."""
+        """Process base64 images."""
         results = []
         for img_tag in base64_images:
             try:
@@ -3118,7 +3117,7 @@ class TextExtractor:
     def _process_url_images(
         self, url_images: list, base_url: str, extraction_options: Optional[Any]
     ) -> list:
-        """Обработка URL изображений."""
+        """Process URL images."""
         if not url_images:
             return []
 
@@ -3130,7 +3129,7 @@ class TextExtractor:
             else settings.IMAGE_DOWNLOAD_TIMEOUT
         )
 
-        # Обработка изображений группами по 2
+        # Process images in groups of 2
         for i in range(0, len(url_images), 2):
             batch = url_images[i : i + 2]
             batch_results = self._process_images_batch(
@@ -3147,7 +3146,7 @@ class TextExtractor:
         extraction_options: Optional[Any],
         timeout: int,
     ) -> list:
-        """Обработка группы изображений параллельно."""
+        """Process a group of images in parallel."""
         batch_results = []
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
@@ -3174,7 +3173,7 @@ class TextExtractor:
     def _process_single_image(
         self, img_tag, base_url: str, extraction_options: Optional[Any] = None
     ) -> Optional[Dict[str, Any]]:
-        """Обработка одного изображения (обновлено в v1.10.2)."""
+        """Process a single image (updated in v1.10.2)."""
         try:
             img_src = img_tag.get("src", "")
             logger.info(f"Processing image: {img_src}")
@@ -3182,16 +3181,16 @@ class TextExtractor:
                 logger.warning("Image has no src attribute")
                 return None
 
-            # Преобразуем относительный URL в абсолютный
+            # Convert relative URL to absolute
             img_url = urljoin(base_url, img_src)
             logger.info(f"Full image URL: {img_url}")
 
-            # Проверяем безопасность URL изображения
+            # Check image URL safety
             if not self._is_safe_url(img_url):
                 logger.warning(f"Blocked image URL: {img_url}")
                 return None
 
-            # Определяем настройки
+            # Determine settings
             image_download_timeout = (
                 extraction_options.image_download_timeout
                 if extraction_options
@@ -3206,7 +3205,7 @@ class TextExtractor:
                 else settings.MIN_IMAGE_SIZE_FOR_OCR
             )
 
-            # Загрузка изображения
+            # Image download
             headers = {"User-Agent": settings.DEFAULT_USER_AGENT, "Referer": base_url}
 
             response = requests.get(
@@ -3214,28 +3213,28 @@ class TextExtractor:
             )
             response.raise_for_status()
 
-            # Проверяем размер изображения
+            # Check image size
             img_content = response.content
             logger.info(f"Image content size: {len(img_content)} bytes")
             if len(img_content) == 0:
                 logger.warning("Image content is empty")
                 return None
 
-            # Открываем изображение для проверки размеров
+            # Open image to check dimensions
             with Image.open(io.BytesIO(img_content)) as img:
                 width, height = img.size
                 logger.info(
                     f"Image dimensions: {width}x{height} = {width * height} pixels (min required: {settings.MIN_IMAGE_SIZE_FOR_OCR})"
                 )
 
-                # Проверяем минимальный размер
+                # Check minimum size
                 if width * height < min_image_size_for_ocr:
                     logger.warning(
                         f"Image too small for OCR: {width * height} < {min_image_size_for_ocr}"
                     )
                     return None
 
-                # OCR изображения
+                # OCR image
                 logger.info(f"Starting OCR for image: {img_url}")
                 text = self._safe_tesseract_ocr(img)
                 logger.info(f"OCR result length: {len(text) if text else 0} characters")
@@ -3244,12 +3243,12 @@ class TextExtractor:
                     logger.warning("No text found in image")
                     return None
 
-                # Извлекаем имя файла из URL
+                # Extract filename from URL
                 from .utils import get_extension_from_mime
 
                 filename = os.path.basename(urlparse(img_url).path) or "image"
                 if "." not in filename:
-                    # Определяем расширение по MIME-типу через утилиту
+                    # Determine extension by MIME type via utility
                     content_type = response.headers.get("content-type", "").lower()
                     extension = get_extension_from_mime(
                         content_type, settings.SUPPORTED_FORMATS
@@ -3258,7 +3257,7 @@ class TextExtractor:
                     if extension:
                         filename += f".{extension}"
                     else:
-                        # Если MIME-тип не поддерживается, игнорируем изображение
+                        # If MIME type is not supported, ignore image
                         logger.warning(f"Unsupported image MIME type: {content_type}")
                         return None
 
@@ -3277,7 +3276,7 @@ class TextExtractor:
     def _process_base64_image(
         self, img_tag, extraction_options: Optional[Any] = None
     ) -> Optional[Dict[str, Any]]:
-        """Обработка base64 изображения из data URI (обновлено в v1.10.2)."""
+        """Process base64 image from data URI (updated in v1.10.2)."""
         try:
             from .utils import (
                 decode_base64_image,
@@ -3292,7 +3291,7 @@ class TextExtractor:
                 logger.warning("Invalid base64 image format")
                 return None
 
-            # Определяем настройки
+            # Determine settings
             min_image_size_for_ocr = (
                 extraction_options.min_image_size_for_ocr
                 if extraction_options
@@ -3300,19 +3299,19 @@ class TextExtractor:
                 else settings.MIN_IMAGE_SIZE_FOR_OCR
             )
 
-            # Извлекаем MIME-тип
+            # Extract MIME type
             mime_type = extract_mime_from_base64_data_uri(img_src)
             if not mime_type:
                 logger.warning("Could not extract MIME type from base64 image")
                 return None
 
-            # Определяем расширение файла
+            # Determine file extension
             extension = get_extension_from_mime(mime_type, settings.SUPPORTED_FORMATS)
             if not extension:
                 logger.warning(f"Unsupported image MIME type: {mime_type}")
                 return None
 
-            # Декодируем base64 изображение
+            # Decode base64 image
             img_content = decode_base64_image(img_src)
             if not img_content:
                 logger.warning("Failed to decode base64 image")
@@ -3320,14 +3319,14 @@ class TextExtractor:
 
             logger.info(f"Base64 image decoded, size: {len(img_content)} bytes")
 
-            # Открываем изображение для проверки размеров
+            # Open image to check dimensions
             with Image.open(io.BytesIO(img_content)) as img:
                 width, height = img.size
                 logger.info(
                     f"Base64 image dimensions: {width}x{height} = {width * height} pixels (min required: {min_image_size_for_ocr})"
                 )
 
-                # Проверяем минимальный размер
+                # Check minimum size
                 if width * height < min_image_size_for_ocr:
                     logger.warning(
                         f"Base64 image too small for OCR: {width * height} < {min_image_size_for_ocr}"
@@ -3343,7 +3342,7 @@ class TextExtractor:
                     logger.warning("No text found in base64 image")
                     return None
 
-                # Формируем имя файла
+                # Format filename
                 filename = f"base64_image.{extension}"
 
                 return {

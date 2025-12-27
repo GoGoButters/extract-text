@@ -1,4 +1,4 @@
-"""Утилиты для приложения."""
+"""Application utilities."""
 
 import glob
 import logging
@@ -12,7 +12,7 @@ import time
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional, Union
 
-# Кроссплатформенная поддержка: модуль resource существует только на Unix
+# Cross-platform support: resource module only exists on Unix
 try:
     import resource
     RESOURCE_AVAILABLE = True
@@ -29,35 +29,35 @@ logger = logging.getLogger(__name__)
 
 
 def setup_logging() -> None:
-    """Настройка структурированного логирования."""
-    # Создание форматтера для логов
+    """Setup structured logging."""
+    # Create formatter for logs
     formatter = logging.Formatter(
         "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
 
-    # Настройка handler для консоли
+    # Setup console handler
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setFormatter(formatter)
 
-    # Настройка root logger
+    # Setup root logger
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.INFO)
     root_logger.addHandler(console_handler)
 
-    # Настройка логгера для uvicorn
+    # Setup uvicorn logger
     uvicorn_logger = logging.getLogger("uvicorn")
     uvicorn_logger.setLevel(logging.INFO)
 
-    # Отключение дублирующихся логов
+    # Disable duplicate logs
     uvicorn_logger.propagate = False
 
 
 def get_file_extension(filename: str) -> Optional[str]:
-    """Получение расширения файла."""
+    """Get file extension."""
     if not filename or "." not in filename:
         return None
 
-    # Обработка составных расширений (tar.gz, tar.bz2, tar.xz)
+    # Handle composite extensions (tar.gz, tar.bz2, tar.xz)
     filename_lower = filename.lower()
     if filename_lower.endswith(".tar.gz") or filename_lower.endswith(".tgz"):
         return "tar.gz"
@@ -70,7 +70,7 @@ def get_file_extension(filename: str) -> Optional[str]:
 
 
 def is_supported_format(filename: str, supported_formats: dict) -> bool:
-    """Проверка поддерживается ли формат файла."""
+    """Check if file format is supported."""
     extension = get_file_extension(filename)
     if not extension:
         return False
@@ -83,7 +83,7 @@ def is_supported_format(filename: str, supported_formats: dict) -> bool:
 
 
 def is_archive_format(filename: str, supported_formats: dict) -> bool:
-    """Проверка, является ли файл архивом."""
+    """Check if the file is an archive."""
     extension = get_file_extension(filename)
     if not extension:
         return False
@@ -93,11 +93,11 @@ def is_archive_format(filename: str, supported_formats: dict) -> bool:
 
 
 def safe_filename(filename: str) -> str:
-    """Безопасное имя файла для логов."""
+    """Safe filename for logs."""
     if not filename:
         return "unknown_file"
 
-    # Удаляем потенциально опасные символы
+    # Remove potentially dangerous characters
     safe_chars = []
     for char in filename:
         if char.isalnum() or char in "._-":
@@ -110,35 +110,35 @@ def safe_filename(filename: str) -> str:
 
 def sanitize_filename(filename: str) -> str:
     """
-    Санитизация имени файла для безопасности с поддержкой кириллицы.
+    Sanitize filename for security with support for various character sets.
 
-    Удаляет опасные символы для path traversal атак, но сохраняет кириллические символы
+    Removes dangerous characters for path traversal attacks.
     """
     if not filename:
         return "unknown_file"
 
-    # Удаляем опасные символы для path traversal
+    # Remove dangerous characters for path traversal
     filename = filename.replace("..", "").replace("/", "").replace("\\", "")
 
-    # Удаляем другие потенциально опасные символы
+    # Remove other potentially dangerous characters
     dangerous_chars = ["<", ">", ":", '"', "|", "?", "*", "\0"]
     for char in dangerous_chars:
         filename = filename.replace(char, "")
 
-    # Удаляем управляющие символы
+    # Remove control characters
     filename = "".join(char for char in filename if ord(char) >= 32)
 
-    # Удаляем начальные и конечные пробелы и точки
+    # Remove leading/trailing spaces and dots
     filename = filename.strip(" .")
 
-    # Если после очистки файл пустой, возвращаем безопасное имя
+    # If the filename is empty after sanitization, return a safe name
     if not filename:
         return "sanitized_file"
 
-    # Ограничиваем длину имени файла (максимум 255 символов для большинства ФС)
+    # Limit filename length (max 255 characters for most FS)
     if len(filename) > 255:
         name, ext = os.path.splitext(filename)
-        # Сохраняем расширение и обрезаем имя
+        # Preserve extension and truncate name
         max_name_length = 255 - len(ext)
         filename = name[:max_name_length] + ext
 
@@ -147,34 +147,31 @@ def sanitize_filename(filename: str) -> str:
 
 def validate_file_type(content: bytes, filename: str) -> tuple[bool, Optional[str]]:
     """
-    Проверка соответствия расширения файла его содержимому.
-
-    Returns:
-        tuple: (is_valid, error_message)
+    Validate that the file extension matches its content.
     """
     if not content or not filename:
-        return False, "Файл или имя файла отсутствуют"
+        return False, "File or filename is missing"
 
     try:
-        # Получаем расширение файла
+        # Get file extension
         file_extension = get_file_extension(filename)
         if not file_extension:
-            return False, "Не удалось определить расширение файла"
+            return False, "Failed to determine file extension"
 
-        # Определяем MIME-тип содержимого
+        # Determine content MIME type
         mime_type = magic.from_buffer(content, mime=True)
 
-        # Словарь соответствия расширений и MIME-типов
+        # Dictionary for extension and MIME type matching
         extension_to_mime = {
-            # Изображения
+            # Images
             "jpg": ["image/jpeg"],
             "jpeg": ["image/jpeg"],
             "png": ["image/png"],
-            "gif": ["image/gif", "image/png"],  # Иногда GIF определяется как PNG
+            "gif": ["image/gif", "image/png"],  # Sometimes GIF is identified as PNG
             "bmp": ["image/bmp", "image/x-ms-bmp"],
-            "tiff": ["image/tiff", "image/png"],  # Иногда TIFF определяется как PNG
+            "tiff": ["image/tiff", "image/png"],  # Sometimes TIFF is identified as PNG
             "tif": ["image/tiff", "image/png"],
-            # Документы
+            # Documents
             "pdf": ["application/pdf"],
             "doc": ["application/msword"],
             "docx": [
@@ -182,19 +179,19 @@ def validate_file_type(content: bytes, filename: str) -> tuple[bool, Optional[st
             ],
             "rtf": ["application/rtf", "text/rtf"],
             "odt": ["application/vnd.oasis.opendocument.text"],
-            # Таблицы
+            # Spreadsheets
             "xls": ["application/vnd.ms-excel"],
             "xlsx": [
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             ],
             "csv": ["text/csv", "text/plain"],
             "ods": ["application/vnd.oasis.opendocument.spreadsheet"],
-            # Презентации
+            # Presentations
             "ppt": ["application/vnd.ms-powerpoint"],
             "pptx": [
                 "application/vnd.openxmlformats-officedocument.presentationml.presentation"
             ],
-            # Текстовые файлы
+            # Text files
             "txt": ["text/plain"],
             "html": ["text/html"],
             "htm": ["text/html"],
@@ -203,7 +200,7 @@ def validate_file_type(content: bytes, filename: str) -> tuple[bool, Optional[st
             "xml": ["application/xml", "text/xml"],
             "yaml": ["text/plain", "application/x-yaml"],
             "yml": ["text/plain", "application/x-yaml"],
-            # Архивы
+            # Archives
             "zip": ["application/zip"],
             "rar": ["application/vnd.rar"],
             "7z": ["application/x-7z-compressed"],
@@ -211,7 +208,7 @@ def validate_file_type(content: bytes, filename: str) -> tuple[bool, Optional[st
             "gz": ["application/gzip"],
             "bz2": ["application/x-bzip2"],
             "xz": ["application/x-xz"],
-            # Исходный код (различные MIME-типы)
+            # Source code (various MIME types)
             "py": ["text/plain", "text/x-script.python", "text/x-python"],
             "js": ["text/plain", "application/javascript", "text/javascript"],
             "ts": ["text/plain", "text/x-typescript", "application/typescript"],
@@ -246,18 +243,18 @@ def validate_file_type(content: bytes, filename: str) -> tuple[bool, Optional[st
             "os": ["text/plain"],
         }
 
-        # Получаем допустимые MIME-типы для расширения
+        # Get allowed MIME types for extension
         expected_mimes = extension_to_mime.get(file_extension, [])
 
-        # Если расширение не в нашем словаре, считаем валидным
+        # If extension is not in our dictionary, consider it valid
         if not expected_mimes:
             return True, None
 
-        # Проверяем соответствие
+        # Check for match
         if mime_type in expected_mimes:
             return True, None
 
-        # Особые случаи для текстовых файлов и исходного кода
+        # Special cases for text files and source code
         text_based_extensions = [
             "txt",
             "md",
@@ -309,7 +306,7 @@ def validate_file_type(content: bytes, filename: str) -> tuple[bool, Optional[st
         if mime_type == "text/plain" and file_extension in text_based_extensions:
             return True, None
 
-        # Особые случаи для различных MIME-типов исходного кода
+        # Special cases for various source code MIME types
         source_code_mimes = [
             "text/x-c",
             "text/x-script.python",
@@ -349,28 +346,26 @@ def validate_file_type(content: bytes, filename: str) -> tuple[bool, Optional[st
         if mime_type in source_code_mimes and file_extension in text_based_extensions:
             return True, None
 
-        return (
-            False,
-            f"Расширение файла '.{file_extension}' не соответствует его содержимому (MIME-тип: {mime_type})",
+            f"File extension '.{file_extension}' does not match its content (MIME type: {mime_type})",
         )
 
     except Exception as e:
-        # В случае ошибки определения MIME-типа, считаем файл невалидным (fail-closed)
-        logger.warning(f"Ошибка при валидации файла {filename}: {str(e)}")
-        return False, f"Не удалось определить тип файла: {str(e)}"
+        # In case of MIME type determination error, consider file invalid (fail-closed)
+        logger.warning(f"Error validating file {filename}: {str(e)}")
+        return False, f"Failed to determine file type: {str(e)}"
 
 
 def cleanup_temp_files() -> None:
     """
-    Очистка временных файлов при старте приложения.
+    Cleanup temporary files at application startup.
 
-    Удаляет временные файлы, которые могли остаться после предыдущих запусков
+    Removes temporary files that might have been left over from previous runs.
     """
     try:
-        # Получаем системную папку для временных файлов
+        # Get system temporary directory
         temp_dir = tempfile.gettempdir()
 
-        # Паттерны для поиска временных файлов нашего приложения
+        # Patterns to find temporary files of our application
         patterns = [
             "tmp*.pdf",
             "tmp*.doc",
@@ -399,25 +394,25 @@ def cleanup_temp_files() -> None:
 
         files_removed = 0
 
-        # Поиск и удаление временных файлов
+        # Find and remove temporary files
         for pattern in patterns:
             full_pattern = os.path.join(temp_dir, pattern)
             for temp_file in glob.glob(full_pattern):
                 try:
-                    # Проверяем, что файл старше 1 часа (3600 секунд)
+                    # Check if the file is older than 1 hour (3600 seconds)
                     file_age = os.path.getmtime(temp_file)
                     current_time = time.time()
 
                     if current_time - file_age > 3600:
                         os.unlink(temp_file)
                         files_removed += 1
-                        logger.debug(f"Удален временный файл: {temp_file}")
+                        logger.debug(f"Removed temporary file: {temp_file}")
                 except OSError as e:
                     logger.warning(
-                        f"Не удалось удалить временный файл {temp_file}: {str(e)}"
+                        f"Failed to remove temporary file {temp_file}: {str(e)}"
                     )
 
-        # Поиск и удаление временных папок
+        # Find and remove temporary folders
         temp_dirs_patterns = ["tmp*", "extract_*", "temp_*"]
 
         dirs_removed = 0
@@ -427,43 +422,43 @@ def cleanup_temp_files() -> None:
             for temp_dir_path in glob.glob(full_pattern):
                 if os.path.isdir(temp_dir_path):
                     try:
-                        # Проверяем, что папка старше 1 часа
+                        # Check if the folder is older than 1 hour
                         dir_age = os.path.getmtime(temp_dir_path)
                         current_time = time.time()
 
                         if current_time - dir_age > 3600:
                             shutil.rmtree(temp_dir_path, ignore_errors=True)
                             dirs_removed += 1
-                            logger.debug(f"Удалена временная папка: {temp_dir_path}")
+                            logger.debug(f"Removed temporary folder: {temp_dir_path}")
                     except OSError as e:
                         logger.warning(
-                            f"Не удалось удалить временную папку {temp_dir_path}: {str(e)}"
+                            f"Failed to remove temporary folder {temp_dir_path}: {str(e)}"
                         )
 
         if files_removed > 0 or dirs_removed > 0:
             logger.info(
-                f"Очистка временных файлов завершена. Удалено файлов: {files_removed}, папок: {dirs_removed}"
+                f"Temporary file cleanup completed. Removed files: {files_removed}, folders: {dirs_removed}"
             )
         else:
             logger.info(
-                "Очистка временных файлов завершена. Старые временные файлы не найдены."
+                "Temporary file cleanup completed. No old temporary files found."
             )
 
     except Exception as e:
-        logger.error(f"Ошибка при очистке временных файлов: {str(e)}", exc_info=True)
+        logger.error(f"Error cleaning up temporary files: {str(e)}", exc_info=True)
 
 
 def cleanup_recent_temp_files() -> None:
     """
-    Немедленная очистка временных файлов текущего процесса.
+    Immediate cleanup of temporary files for the current process.
 
-    Удаляет временные файлы, созданные в последние 10 минут
+    Removes temporary files created in the last 10 minutes.
     """
     try:
-        # Получаем системную папку для временных файлов
+        # Get system temporary directory
         temp_dir = tempfile.gettempdir()
 
-        # Паттерны для поиска временных файлов нашего приложения
+        # Patterns to find temporary files of our application
         patterns = [
             "tmp*.pdf",
             "tmp*.doc",
@@ -500,24 +495,24 @@ def cleanup_recent_temp_files() -> None:
         files_removed = 0
         current_time = time.time()
 
-        # Поиск и удаление недавних временных файлов (младше 10 минут)
+        # Find and remove recent temporary files (less than 10 minutes old)
         for pattern in patterns:
             full_pattern = os.path.join(temp_dir, pattern)
             for temp_file in glob.glob(full_pattern):
                 try:
-                    # Проверяем, что файл младше 10 минут (600 секунд)
+                    # Check if the file is less than 10 minutes old (600 seconds)
                     file_age = os.path.getmtime(temp_file)
 
-                    if current_time - file_age <= 600:  # 10 минут
+                    if current_time - file_age <= 600:  # 10 minutes
                         os.unlink(temp_file)
                         files_removed += 1
-                        logger.debug(f"Удален недавний временный файл: {temp_file}")
+                        logger.debug(f"Removed recent temporary file: {temp_file}")
                 except OSError as e:
                     logger.debug(
-                        f"Не удалось удалить временный файл {temp_file}: {str(e)}"
+                        f"Failed to remove temporary file {temp_file}: {str(e)}"
                     )
 
-        # Поиск и удаление недавних временных папок
+        # Find and remove recent temporary folders
         temp_dirs_patterns = ["tmp*", "extract_*", "temp_*"]
         dirs_removed = 0
 
@@ -526,27 +521,27 @@ def cleanup_recent_temp_files() -> None:
             for temp_dir_path in glob.glob(full_pattern):
                 if os.path.isdir(temp_dir_path):
                     try:
-                        # Проверяем, что папка младше 10 минут
+                        # Check if the folder is less than 10 minutes old
                         dir_age = os.path.getmtime(temp_dir_path)
 
-                        if current_time - dir_age <= 600:  # 10 минут
+                        if current_time - dir_age <= 600:  # 10 minutes
                             shutil.rmtree(temp_dir_path, ignore_errors=True)
                             dirs_removed += 1
                             logger.debug(
-                                f"Удалена недавняя временная папка: {temp_dir_path}"
+                                f"Removed recent temporary folder: {temp_dir_path}"
                             )
                     except OSError as e:
                         logger.debug(
-                            f"Не удалось удалить временную папку {temp_dir_path}: {str(e)}"
+                            f"Failed to remove temporary folder {temp_dir_path}: {str(e)}"
                         )
 
         if files_removed > 0 or dirs_removed > 0:
             logger.info(
-                f"Очистка недавних временных файлов завершена. Удалено файлов: {files_removed}, папок: {dirs_removed}"
+                f"Recent temporary file cleanup completed. Removed files: {files_removed}, folders: {dirs_removed}"
             )
 
     except Exception as e:
-        logger.warning(f"Ошибка при очистке недавних временных файлов: {str(e)}")
+        logger.warning(f"Error cleaning up recent temporary files: {str(e)}")
 
 
 def run_subprocess_with_limits(
@@ -558,57 +553,57 @@ def run_subprocess_with_limits(
     **kwargs,
 ) -> subprocess.CompletedProcess:
     """
-    Запуск подпроцесса с ограничениями ресурсов.
+    Run a subprocess with resource limits.
 
     Args:
-        command: Команда для выполнения
-        timeout: Таймаут в секундах
-        memory_limit: Ограничение памяти в байтах (None для использования настроек по умолчанию)
-        capture_output: Захватывать ли вывод
-        text: Использовать ли текстовый режим
-        **kwargs: Дополнительные параметры для subprocess.run
+        command: Command to execute
+        timeout: Timeout in seconds
+        memory_limit: Memory limit in bytes (None to use defaults)
+        capture_output: Whether to capture output
+        text: Whether to use text mode
+        **kwargs: Additional parameters for subprocess.run
 
     Returns:
-        subprocess.CompletedProcess: Результат выполнения
+        subprocess.CompletedProcess: Execution result
 
     Raises:
-        subprocess.TimeoutExpired: При превышении таймаута
-        subprocess.CalledProcessError: При ошибке выполнения
-        MemoryError: При превышении лимита памяти
+        subprocess.TimeoutExpired: On timeout
+        subprocess.CalledProcessError: On execution error
+        MemoryError: On memory limit exceeded
     """
-    # На Windows или если ограничения отключены, используем стандартный запуск
+    # On Windows or if limits are disabled, use standard launch
     if not settings.ENABLE_RESOURCE_LIMITS or not RESOURCE_AVAILABLE:
         if not RESOURCE_AVAILABLE:
-            logger.debug("Модуль resource недоступен (Windows?), запуск без ограничений ресурсов")
+            logger.debug("resource module unavailable (Windows?), launching without resource limits")
         return subprocess.run(
             command, timeout=timeout, capture_output=capture_output, text=text, **kwargs
         )
 
-    # Определяем лимит памяти
+    # Determine memory limit
     if memory_limit is None:
         memory_limit = settings.MAX_SUBPROCESS_MEMORY
 
     def preexec_fn():
-        """Функция для установки ограничений ресурсов перед выполнением."""
+        """Function to set resource limits before execution."""
         try:
-            # Устанавливаем ограничение на использование виртуальной памяти
+            # Set limit on virtual memory usage
             resource.setrlimit(resource.RLIMIT_AS, (memory_limit, memory_limit))
 
-            # Устанавливаем ограничение на размер данных
+            # Set limit on data size
             resource.setrlimit(resource.RLIMIT_DATA, (memory_limit, memory_limit))
 
-            # Устанавливаем ограничение на время CPU (в секундах)
+            # Set limit on CPU time (in seconds)
             resource.setrlimit(resource.RLIMIT_CPU, (timeout * 2, timeout * 2))
 
             logger.debug(
-                f"Установлены ограничения ресурсов: память={memory_limit}, CPU={timeout * 2}"
+                f"Resource limits set: memory={memory_limit}, CPU={timeout * 2}"
             )
 
         except Exception as e:
-            logger.warning(f"Не удалось установить ограничения ресурсов: {e}")
+            logger.warning(f"Failed to set resource limits: {e}")
 
     try:
-        # Запускаем процесс с ограничениями
+        # Run process with limits
         result = subprocess.run(
             command,
             timeout=timeout,
@@ -621,31 +616,31 @@ def run_subprocess_with_limits(
         return result
 
     except subprocess.TimeoutExpired:
-        logger.error(f"Процесс превысил таймаут {timeout}s: {' '.join(command)}")
+        logger.error(f"Process exceeded timeout {timeout}s: {' '.join(command)}")
         raise
     except subprocess.CalledProcessError as e:
-        # Проверяем, не была ли ошибка связана с превышением лимита памяти
-        if e.returncode == 137:  # SIGKILL, часто означает превышение лимита памяти
+        # Check if error was due to memory limit exceeded
+        if e.returncode == 137:  # SIGKILL, often means memory limit exceeded
             logger.error(
-                f"Процесс превысил лимит памяти {memory_limit} байт: {' '.join(command)}"
+                f"Process exceeded memory limit {memory_limit} bytes: {' '.join(command)}"
             )
             raise MemoryError(f"Subprocess exceeded memory limit: {memory_limit} bytes")
         else:
             logger.error(
-                f"Процесс завершился с ошибкой {e.returncode}: {' '.join(command)}"
+                f"Process exited with error {e.returncode}: {' '.join(command)}"
             )
             raise
     except Exception as e:
-        logger.error(f"Ошибка при выполнении процесса: {' '.join(command)}, {str(e)}")
+        logger.error(f"Error executing process: {' '.join(command)}, {str(e)}")
         raise
 
 
 def validate_image_for_ocr(image_content: bytes) -> tuple[bool, Optional[str]]:
     """
-    Валидация изображения перед OCR для предотвращения DoS атак.
+    Validate image before OCR to prevent DoS attacks.
 
     Args:
-        image_content: Содержимое изображения
+        image_content: Image content
 
     Returns:
         tuple[bool, Optional[str]]: (is_valid, error_message)
@@ -655,51 +650,51 @@ def validate_image_for_ocr(image_content: bytes) -> tuple[bool, Optional[str]]:
 
         from PIL import Image
 
-        # Открываем изображение без полной загрузки в память
+        # Open image without fully loading into memory
         with Image.open(io.BytesIO(image_content)) as img:
-            # Проверяем разрешение
+            # Check resolution
             width, height = img.size
             total_pixels = width * height
 
             if total_pixels > settings.MAX_OCR_IMAGE_PIXELS:
                 return (
                     False,
-                    f"Изображение слишком большое: {total_pixels} пикселей (макс: {settings.MAX_OCR_IMAGE_PIXELS})",
+                    f"Image too large: {total_pixels} pixels (max: {settings.MAX_OCR_IMAGE_PIXELS})",
                 )
 
-            # Проверяем формат
+            # Check format
             if img.format not in ["JPEG", "PNG", "TIFF", "BMP", "GIF"]:
-                return False, f"Неподдерживаемый формат изображения: {img.format}"
+                return False, f"Unsupported image format: {img.format}"
 
-            # Проверяем количество каналов (защита от сложных изображений)
+            # Check channel count (protection against complex images)
             if hasattr(img, "mode"):
                 if img.mode not in ["L", "RGB", "RGBA", "P"]:
-                    return False, f"Неподдерживаемый цветовой режим: {img.mode}"
+                    return False, f"Unsupported color mode: {img.mode}"
 
             logger.debug(
-                f"Валидация изображения пройдена: {width}x{height}, {img.format}, {img.mode}"
+                f"Image validation passed: {width}x{height}, {img.format}, {img.mode}"
             )
             return True, None
 
     except Exception as e:
-        logger.error(f"Ошибка при валидации изображения: {str(e)}")
-        return False, f"Не удалось обработать изображение: {str(e)}"
+        logger.error(f"Error validating image: {str(e)}")
+        return False, f"Failed to process image: {str(e)}"
 
 
 def get_memory_usage() -> Dict[str, Any]:
     """
-    Получение информации об использовании памяти.
+    Get memory usage information.
 
     Returns:
-        Dict[str, Any]: Информация о памяти
+        Dict[str, Any]: Memory information
     """
     try:
         import psutil
 
-        # Информация о системе
+        # System information
         memory = psutil.virtual_memory()
 
-        # Информация о текущем процессе
+        # Current process information
         process = psutil.Process(os.getpid())
         process_memory = process.memory_info()
 
@@ -713,10 +708,10 @@ def get_memory_usage() -> Dict[str, Any]:
             "process_percent": process.memory_percent(),
         }
     except ImportError:
-        logger.warning("psutil не установлен, информация о памяти недоступна")
+        logger.warning("psutil not installed, memory information unavailable")
         return {}
     except Exception as e:
-        logger.error(f"Ошибка при получении информации о памяти: {e}")
+        logger.error(f"Error getting memory information: {e}")
         return {}
 
 
@@ -724,24 +719,24 @@ def get_extension_from_mime(
     content_type: str, supported_formats: dict
 ) -> Optional[str]:
     """
-    Определение расширения файла по MIME-типу с учетом поддерживаемых форматов.
+    Determine file extension by MIME type considering supported formats.
 
     Args:
-        content_type: MIME-тип из заголовка Content-Type
-        supported_formats: Словарь поддерживаемых форматов из settings.SUPPORTED_FORMATS
+        content_type: MIME type from Content-Type header
+        supported_formats: Dictionary of supported formats from settings.SUPPORTED_FORMATS
 
     Returns:
-        Optional[str]: Расширение файла или None, если тип не поддерживается
+        Optional[str]: File extension or None if type is not supported
     """
     if not content_type:
         return None
 
     content_type = content_type.lower().strip()
 
-    # Получаем список поддерживаемых расширений изображений
+    # Get list of supported image extensions
     supported_image_formats = supported_formats.get("images_ocr", [])
 
-    # Маппинг MIME-типов к расширениям
+    # MIME type to extension mapping
     mime_mapping = {
         "image/jpeg": "jpg",
         "image/jpg": "jpg",
@@ -753,12 +748,12 @@ def get_extension_from_mime(
         "image/tif": "tif",
     }
 
-    # Ищем соответствие MIME-типа среди поддерживаемых форматов
+    # Look for exact MIME type match among supported formats
     for mime, ext in mime_mapping.items():
         if mime in content_type and ext in supported_image_formats:
             return ext
 
-    # Если точного соответствия нет, проверяем частичные совпадения
+    # If no exact match, check for partial matches
     if "jpeg" in content_type or "jpg" in content_type:
         return "jpg" if "jpg" in supported_image_formats else None
     elif "png" in content_type:
@@ -776,56 +771,56 @@ def get_extension_from_mime(
             else "tif" if "tif" in supported_image_formats else None
         )
 
-    # Если MIME-тип не поддерживается, возвращаем None
+    # If MIME type is not supported, return None
     return None
 
 
 def decode_base64_image(base64_data: str) -> Optional[bytes]:
     """
-    Декодирование base64 изображения из data URI.
+    Decode base64 image from data URI.
 
     Args:
-        base64_data: Строка в формате data:image/jpeg;base64,/9j/4AAQ...
+        base64_data: String in format data:image/jpeg;base64,/9j/4AAQ...
 
     Returns:
-        Optional[bytes]: Декодированные байты изображения или None при ошибке
+        Optional[bytes]: Decoded image bytes or None on error
     """
     try:
-        # Проверяем формат data URI
+        # Check data URI format
         if not base64_data.startswith("data:image/"):
             return None
 
-        # Извлекаем base64 часть после запятой
+        # Extract base64 part after comma
         if "," not in base64_data:
             return None
 
         base64_part = base64_data.split(",", 1)[1]
 
-        # Декодируем base64
+        # Decode base64
         import base64
 
         return base64.b64decode(base64_part)
 
     except Exception as e:
-        logger.warning(f"Ошибка декодирования base64 изображения: {str(e)}")
+        logger.warning(f"Error decoding base64 image: {str(e)}")
         return None
 
 
 def extract_mime_from_base64_data_uri(data_uri: str) -> Optional[str]:
     """
-    Извлечение MIME-типа из data URI.
+    Extract MIME type from data URI.
 
     Args:
-        data_uri: Строка в формате data:image/jpeg;base64,/9j/4AAQ...
+        data_uri: String in format data:image/jpeg;base64,/9j/4AAQ...
 
     Returns:
-        Optional[str]: MIME-тип (например, 'image/jpeg') или None при ошибке
+        Optional[str]: MIME type (e.g., 'image/jpeg') or None on error
     """
     try:
         if not data_uri.startswith("data:"):
             return None
 
-        # Извлекаем часть до точки с запятой
+        # Extract part before semicolon
         if ";" not in data_uri:
             return None
 
@@ -835,5 +830,5 @@ def extract_mime_from_base64_data_uri(data_uri: str) -> Optional[str]:
         return mime_type if mime_type.startswith("image/") else None
 
     except Exception as e:
-        logger.warning(f"Ошибка извлечения MIME-типа из data URI: {str(e)}")
+        logger.warning(f"Error extracting MIME type from data URI: {str(e)}")
         return None

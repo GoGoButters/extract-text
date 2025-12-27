@@ -1,11 +1,11 @@
-"""Конфигурация приложения."""
+"""Application configuration."""
 
 import os
 from typing import List
 
 
 class Settings:
-    """Настройки приложения."""
+    """Application settings."""
 
     # Basic settings
     VERSION: str = "1.10.8"
@@ -74,55 +74,55 @@ class Settings:
     
     MAX_ARCHIVE_NESTING: int = int(os.getenv("MAX_ARCHIVE_NESTING", "3"))
 
-    # Настройки веб-экстрактора (v1.10.0)
+    # Web extractor settings (v1.10.0)
     MIN_IMAGE_SIZE_FOR_OCR: int = int(
         os.getenv("MIN_IMAGE_SIZE_FOR_OCR", "22500")
-    )  # 150x150 пикселей
+    )  # 150x150 pixels
     MAX_IMAGES_PER_PAGE: int = int(os.getenv("MAX_IMAGES_PER_PAGE", "20"))
-    WEB_PAGE_TIMEOUT: int = int(os.getenv("WEB_PAGE_TIMEOUT", "30"))  # секунды
+    WEB_PAGE_TIMEOUT: int = int(os.getenv("WEB_PAGE_TIMEOUT", "30"))  # seconds
     IMAGE_DOWNLOAD_TIMEOUT: int = int(
         os.getenv("IMAGE_DOWNLOAD_TIMEOUT", "15")
-    )  # секунды
+    )  # seconds
     DEFAULT_USER_AGENT: str = os.getenv("DEFAULT_USER_AGENT", "Text Extraction Bot 1.0")
     ENABLE_JAVASCRIPT: bool = os.getenv("ENABLE_JAVASCRIPT", "false").lower() == "true"
 
-    # Новые настройки для определения типа контента и скачивания файлов (v1.10.3)
+    # New settings for content type determination and file downloading (v1.10.3)
     HEAD_REQUEST_TIMEOUT: int = int(
         os.getenv("HEAD_REQUEST_TIMEOUT", "10")
-    )  # таймаут HEAD запроса
+    )  # HEAD request timeout
     FILE_DOWNLOAD_TIMEOUT: int = int(
         os.getenv("FILE_DOWNLOAD_TIMEOUT", "60")
-    )  # таймаут скачивания файла
+    )  # file download timeout
 
-    # Новые настройки веб-экстрактора (v1.10.1)
+    # New web extractor settings (v1.10.1)
     ENABLE_BASE64_IMAGES: bool = (
         os.getenv("ENABLE_BASE64_IMAGES", "true").lower() == "true"
     )
     WEB_PAGE_DELAY: int = int(
         os.getenv("WEB_PAGE_DELAY", "3")
-    )  # секунды задержки после загрузки JS
+    )  # seconds delay after JS load
     ENABLE_LAZY_LOADING_WAIT: bool = (
         os.getenv("ENABLE_LAZY_LOADING_WAIT", "true").lower() == "true"
     )
     JS_RENDER_TIMEOUT: int = int(
         os.getenv("JS_RENDER_TIMEOUT", "10")
-    )  # отдельный таймаут для JS-рендеринга
+    )  # separate timeout for JS rendering
     MAX_SCROLL_ATTEMPTS: int = int(
         os.getenv("MAX_SCROLL_ATTEMPTS", "3")
-    )  # защита от бесконечного скролла
+    )  # protect against infinite scroll
 
-    # Заблокированные IP-диапазоны для защиты от SSRF
+    # Blocked IP ranges for SSRF protection
     BLOCKED_IP_RANGES: str = os.getenv(
         "BLOCKED_IP_RANGES",
         "127.0.0.0/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,169.254.0.0/16,::1/128,fe80::/10",
     )
 
-    # Заблокированные хосты (включая Docker и loopback)
+    # Blocked hostnames (including Docker and loopback)
     BLOCKED_HOSTNAMES: str = os.getenv(
         "BLOCKED_HOSTNAMES", "localhost,host.docker.internal,ip6-localhost,ip6-loopback"
     )
 
-    # Поддерживаемые форматы
+    # Supported formats
     SUPPORTED_FORMATS = {
         "images_ocr": ["jpg", "jpeg", "png", "tiff", "tif", "bmp", "gif", "webp"],
         "documents": ["doc", "docx", "pdf", "rtf", "odt"],
@@ -294,7 +294,7 @@ class Settings:
 
     @property
     def all_supported_extensions(self) -> List[str]:
-        """Все поддерживаемые расширения файлов."""
+        """All supported file extensions."""
         extensions = []
         for format_group in self.SUPPORTED_FORMATS.values():
             extensions.extend(format_group)

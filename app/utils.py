@@ -346,7 +346,8 @@ def validate_file_type(content: bytes, filename: str) -> tuple[bool, Optional[st
         if mime_type in source_code_mimes and file_extension in text_based_extensions:
             return True, None
 
-            f"File extension '.{file_extension}' does not match its content (MIME type: {mime_type})",
+        return False, (
+            f"File extension '.{file_extension}' does not match its content (MIME type: {mime_type})"
         )
 
     except Exception as e:

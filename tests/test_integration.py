@@ -846,7 +846,7 @@ class TestErrorHandling:
                 assert response.status_code == 422
                 data = response.json()
                 assert data["status"] == "error"
-                assert "поврежден" in data["message"]
+                assert "corrupted" in data["message"]
 
 
 @pytest.mark.integration
@@ -901,8 +901,7 @@ class TestURLExtractionIntegration:
         data = response.json()
         assert data["status"] == "error"
         assert (
-            "внутренним IP-адресам запрещен" in data["message"]
-            or "blocked" in data["message"]
+            "prohibited" in data["message"].lower() or "internal ip" in data["message"].lower()
         )
 
     def test_extract_url_blocked_private_ip(self, test_client):
@@ -915,6 +914,5 @@ class TestURLExtractionIntegration:
         data = response.json()
         assert data["status"] == "error"
         assert (
-            "внутренним IP-адресам запрещен" in data["message"]
-            or "blocked" in data["message"]
+            "prohibited" in data["message"].lower() or "internal ip" in data["message"].lower()
         )

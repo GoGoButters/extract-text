@@ -2654,7 +2654,7 @@ class TextExtractor:
         extraction_options: Optional[Any] = None,
     ) -> List[Dict[str, Any]]:
         """Extract text from a web page or file by URL (updated in v1.10.3)."""
-        # Проверка безопасности URL
+        # Check URL safety
         if not self._is_safe_url(url):
             raise ValueError(
                 "Access to internal IP addresses is prohibited for security reasons"

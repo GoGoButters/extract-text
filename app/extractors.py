@@ -2727,6 +2727,7 @@ class TextExtractor:
                     url, user_agent, extraction_options
                 )
         else:
+            if enable_javascript and not sync_playwright:
                 logger.warning(
                     "JavaScript enabled, but Playwright is not installed, using requests"
                 )
